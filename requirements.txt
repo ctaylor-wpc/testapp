@@ -1,0 +1,12 @@
+streamlit
+googlemaps
+requests
+reportlab
+google-auth
+google-auth-oauthlib
+google-api-python-client
+gspread
+pdfrw
+pypdf>=3.0.0
+PyMuPDF
+pydrive2
