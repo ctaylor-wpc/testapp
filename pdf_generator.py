@@ -200,7 +200,7 @@ def generate_pdf(plants_data, installation_data, customer_data, pricing_data, cu
                                         field_rect.y1 - 5   # Move up by 5 points
                                     )
                                     # Expand by 10%
-                                    adjusted_rect = adjusted_rect * 1.5
+                                    adjusted_rect = adjusted_rect * 2
                                     
                                     # Place image in the adjusted signature field location
                                     if adjusted_rect and adjusted_rect.is_valid and not adjusted_rect.is_empty:
