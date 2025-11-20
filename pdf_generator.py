@@ -192,12 +192,19 @@ def generate_pdf(plants_data, installation_data, customer_data, pricing_data, cu
                                     # Get the field's rectangle
                                     field_rect = widget.rect
                                     
-                                    # Debug: print field rect
-                                    st.info(f"Found signature field at: {field_rect}")
+                                    # Adjust rectangle: move up 5 points and expand by 10%
+                                    adjusted_rect = fitz.Rect(
+                                        field_rect.x0,
+                                        field_rect.y0 - 5,  # Move up by 5 points
+                                        field_rect.x1,
+                                        field_rect.y1 - 5   # Move up by 5 points
+                                    )
+                                    # Expand by 10%
+                                    adjusted_rect = adjusted_rect * 1.5
                                     
-                                    # Place image in the signature field location
-                                    if field_rect and field_rect.is_valid and not field_rect.is_empty:
-                                        page.insert_image(field_rect, stream=sig_bytes.getvalue(), keep_proportion=True)
+                                    # Place image in the adjusted signature field location
+                                    if adjusted_rect and adjusted_rect.is_valid and not adjusted_rect.is_empty:
+                                        page.insert_image(adjusted_rect, stream=sig_bytes.getvalue(), keep_proportion=True)
                                         signature_placed = True
                                         # Make field read-only
                                         widget.field_flags |= 1 << 0
@@ -214,20 +221,16 @@ def generate_pdf(plants_data, installation_data, customer_data, pricing_data, cu
                         # Adjusted position: 3x further right (50 -> 150), 50% smaller
                         # Original: 50, 650, 250, 720 (200 wide x 70 tall)
                         # New: 150, 650, 250, 685 (100 wide x 35 tall - 50% of original size)
-                        rect = fitz.Rect(150, 650, 250, 685)
-                        
-                        st.info(f"Using fallback position: {rect}")
+                        rect = fitz.Rect(100, 615, 300, 675)
                         
                         if rect and rect.is_valid and not rect.is_empty:
                             page.insert_image(rect, stream=sig_bytes.getvalue(), keep_proportion=True)
                             signature_placed = True
                         else:
-                            st.warning(f"Fallback rect is invalid: valid={rect.is_valid if rect else 'None'}, empty={rect.is_empty if rect else 'None'}")
+                            st.warning(f"Fallback rect is invalid")
                 
             except Exception as e:
-                import traceback
                 st.warning(f"Could not add signature to PDF: {e}")
-                st.text(traceback.format_exc())
         
         # Render remaining form fields
         for page in doc:
