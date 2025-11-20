@@ -10,6 +10,7 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from PIL import Image
+import numpy as np
 import base64
 from config import PDF_FOLDER_ID
 from sheets_manager import get_service_account_info_from_secrets
@@ -154,37 +155,75 @@ def generate_pdf(plants_data, installation_data, customer_data, pricing_data, cu
         # Open with PyMuPDF to render and add signature if provided
         doc = fitz.open(filled_path)
         
-        # Render form fields
+        signature_field_found = False
+        signature_placed = False
+        
+        # First, try to find and fill the customer_signature form field
+        if customer_signature is not None:
+            try:
+                # Check if signature actually has content
+                if hasattr(customer_signature, 'image_data'):
+                    import numpy as np
+                    img_data = customer_signature.image_data
+                    
+                    if img_data is not None and img_data.size > 0:
+                        # Check if there's actual drawing (not all white)
+                        if np.any(img_data[:, :, 3] > 0):  # Check alpha channel for any marks
+                            sig_img = Image.fromarray(img_data.astype('uint8'), 'RGBA')
+                            
+                            # Save signature to bytes
+                            sig_bytes = io.BytesIO()
+                            sig_img.save(sig_bytes, format='PNG')
+                            sig_bytes.seek(0)
+                            
+                            # Try to find the customer_signature field and get its location
+                            for page_num, page in enumerate(doc):
+                                widgets = page.widgets()
+                                if widgets:
+                                    for widget in widgets:
+                                        if widget.field_name == "customer_signature":
+                                            signature_field_found = True
+                                            # Get the field's rectangle
+                                            field_rect = widget.rect
+                                            
+                                            # Place image in the signature field location
+                                            if field_rect.is_valid and not field_rect.is_empty:
+                                                page.insert_image(field_rect, stream=sig_bytes.getvalue(), keep_proportion=True)
+                                                signature_placed = True
+                                                # Make field read-only
+                                                widget.field_flags |= 1 << 0
+                                                widget.update()
+                                                break
+                                
+                                if signature_placed:
+                                    break
+                            
+                            # If signature field wasn't found, place at specified coordinates
+                            if not signature_placed:
+                                page = doc[-1]
+                                
+                                # Adjusted position: 3x further right (50 -> 150), 50% smaller
+                                # Original: 50, 650, 250, 720 (200 wide x 70 tall)
+                                # New: 150, 650, 250, 685 (100 wide x 35 tall - 50% of original size)
+                                rect = fitz.Rect(150, 650, 250, 685)
+                                
+                                if rect.is_valid and not rect.is_empty:
+                                    page.insert_image(rect, stream=sig_bytes.getvalue(), keep_proportion=True)
+                                    signature_placed = True
+                
+            except Exception as e:
+                st.warning(f"Could not add signature to PDF: {e}")
+        
+        # Render remaining form fields
         for page in doc:
             widgets = page.widgets()
             if widgets:
                 for widget in widgets:
+                    # Skip the signature field if we already processed it
+                    if signature_field_found and widget.field_name == "customer_signature":
+                        continue
                     widget.update()
                     widget.field_flags |= 1 << 0  # Set ReadOnly
-        
-        # Add signature if provided
-        if customer_signature is not None:
-            try:
-                # Convert signature to image bytes if needed
-                if hasattr(customer_signature, 'image_data'):
-                    # It's from streamlit_drawable_canvas
-                    sig_img = Image.fromarray(customer_signature.image_data)
-                else:
-                    sig_img = customer_signature
-                
-                # Save signature to bytes
-                sig_bytes = io.BytesIO()
-                sig_img.save(sig_bytes, format='PNG')
-                sig_bytes.seek(0)
-                
-                # Add signature to PDF (adjust coordinates as needed for your template)
-                # This adds to the last page - adjust page number and coordinates as needed
-                page = doc[-1]
-                rect = fitz.Rect(150, 650, 150, 720)  # x0, y0, x1, y1 - adjust for your template
-                page.insert_image(rect, stream=sig_bytes.getvalue())
-                
-            except Exception as e:
-                st.warning(f"Could not add signature to PDF: {e}")
         
         doc.save(output_buffer, deflate=True)
         output_buffer.seek(0)
