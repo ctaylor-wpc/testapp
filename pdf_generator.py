@@ -221,7 +221,7 @@ def generate_pdf(plants_data, installation_data, customer_data, pricing_data, cu
                         # Adjusted position: 3x further right (50 -> 150), 50% smaller
                         # Original: 50, 650, 250, 720 (200 wide x 70 tall)
                         # New: 150, 650, 250, 685 (100 wide x 35 tall - 50% of original size)
-                        rect = fitz.Rect(150, 650, 250, 685)
+                        rect = fitz.Rect(150, 620, 250, 685)
                         
                         if rect and rect.is_valid and not rect.is_empty:
                             page.insert_image(rect, stream=sig_bytes.getvalue(), keep_proportion=True)
