@@ -456,8 +456,8 @@ def main():
             stroke_width=2,
             stroke_color="#000000",
             background_color="#FFFFFF",
-            height=150,
-            width=400,
+            height=200,
+            width=600,
             drawing_mode="freedraw",
             key="customer_signature_canvas",
         )

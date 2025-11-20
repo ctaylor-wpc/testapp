@@ -180,7 +180,7 @@ def generate_pdf(plants_data, installation_data, customer_data, pricing_data, cu
                 # Add signature to PDF (adjust coordinates as needed for your template)
                 # This adds to the last page - adjust page number and coordinates as needed
                 page = doc[-1]
-                rect = fitz.Rect(150, 650, 125, 360)  # x0, y0, x1, y1 - adjust for your template
+                rect = fitz.Rect(150, 650, 200, 600)  # x0, y0, x1, y1 - adjust for your template
                 page.insert_image(rect, stream=sig_bytes.getvalue())
                 
             except Exception as e:
