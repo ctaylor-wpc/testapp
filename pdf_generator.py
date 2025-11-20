@@ -162,6 +162,9 @@ def generate_pdf(plants_data, installation_data, customer_data, pricing_data, cu
         if customer_signature is not None:
             try:
                 # Check if signature actually has content
+                has_signature_content = False
+                sig_bytes = None
+                
                 if hasattr(customer_signature, 'image_data'):
                     import numpy as np
                     img_data = customer_signature.image_data
@@ -169,50 +172,62 @@ def generate_pdf(plants_data, installation_data, customer_data, pricing_data, cu
                     if img_data is not None and img_data.size > 0:
                         # Check if there's actual drawing (not all white)
                         if np.any(img_data[:, :, 3] > 0):  # Check alpha channel for any marks
+                            has_signature_content = True
                             sig_img = Image.fromarray(img_data.astype('uint8'), 'RGBA')
                             
                             # Save signature to bytes
                             sig_bytes = io.BytesIO()
                             sig_img.save(sig_bytes, format='PNG')
                             sig_bytes.seek(0)
+                
+                # Only proceed if we have actual signature content
+                if has_signature_content and sig_bytes is not None:
+                    # Try to find the customer_signature field and get its location
+                    for page_num, page in enumerate(doc):
+                        widgets = page.widgets()
+                        if widgets:
+                            for widget in widgets:
+                                if widget.field_name == "customer_signature":
+                                    signature_field_found = True
+                                    # Get the field's rectangle
+                                    field_rect = widget.rect
+                                    
+                                    # Debug: print field rect
+                                    st.info(f"Found signature field at: {field_rect}")
+                                    
+                                    # Place image in the signature field location
+                                    if field_rect and field_rect.is_valid and not field_rect.is_empty:
+                                        page.insert_image(field_rect, stream=sig_bytes.getvalue(), keep_proportion=True)
+                                        signature_placed = True
+                                        # Make field read-only
+                                        widget.field_flags |= 1 << 0
+                                        widget.update()
+                                        break
                             
-                            # Try to find the customer_signature field and get its location
-                            for page_num, page in enumerate(doc):
-                                widgets = page.widgets()
-                                if widgets:
-                                    for widget in widgets:
-                                        if widget.field_name == "customer_signature":
-                                            signature_field_found = True
-                                            # Get the field's rectangle
-                                            field_rect = widget.rect
-                                            
-                                            # Place image in the signature field location
-                                            if field_rect.is_valid and not field_rect.is_empty:
-                                                page.insert_image(field_rect, stream=sig_bytes.getvalue(), keep_proportion=True)
-                                                signature_placed = True
-                                                # Make field read-only
-                                                widget.field_flags |= 1 << 0
-                                                widget.update()
-                                                break
-                                
-                                if signature_placed:
-                                    break
-                            
-                            # If signature field wasn't found, place at specified coordinates
-                            if not signature_placed:
-                                page = doc[-1]
-                                
-                                # Adjusted position: 3x further right (50 -> 150), 50% smaller
-                                # Original: 50, 650, 250, 720 (200 wide x 70 tall)
-                                # New: 150, 650, 250, 685 (100 wide x 35 tall - 50% of original size)
-                                rect = fitz.Rect(150, 650, 250, 685)
-                                
-                                if rect.is_valid and not rect.is_empty:
-                                    page.insert_image(rect, stream=sig_bytes.getvalue(), keep_proportion=True)
-                                    signature_placed = True
+                            if signature_placed:
+                                break
+                    
+                    # If signature field wasn't found, place at specified coordinates
+                    if not signature_placed:
+                        page = doc[-1]
+                        
+                        # Adjusted position: 3x further right (50 -> 150), 50% smaller
+                        # Original: 50, 650, 250, 720 (200 wide x 70 tall)
+                        # New: 150, 650, 250, 685 (100 wide x 35 tall - 50% of original size)
+                        rect = fitz.Rect(150, 650, 250, 685)
+                        
+                        st.info(f"Using fallback position: {rect}")
+                        
+                        if rect and rect.is_valid and not rect.is_empty:
+                            page.insert_image(rect, stream=sig_bytes.getvalue(), keep_proportion=True)
+                            signature_placed = True
+                        else:
+                            st.warning(f"Fallback rect is invalid: valid={rect.is_valid if rect else 'None'}, empty={rect.is_empty if rect else 'None'}")
                 
             except Exception as e:
+                import traceback
                 st.warning(f"Could not add signature to PDF: {e}")
+                st.text(traceback.format_exc())
         
         # Render remaining form fields
         for page in doc:
