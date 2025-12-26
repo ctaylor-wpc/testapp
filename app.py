@@ -1,4 +1,4 @@
-# app.py Version 9
+# app.py
 # Main application file with signature capture and load existing install features
 
 import streamlit as st
@@ -7,7 +7,10 @@ import io
 import re
 import math
 import datetime
+import base64
 from streamlit_drawable_canvas import st_canvas
+from PIL import Image
+import numpy as np
 
 # Import from our modules
 from config import *
@@ -526,6 +529,19 @@ By signing below, you're confirming that the installation order is complete and 
 **Please sign here:**
         """)
         
+        # Check if there's an existing signature to display
+        existing_signature = existing_customer.get('signature_base64', None)
+        
+        if existing_signature:
+            st.info("✓ Signature on file. You can sign again below to replace it.")
+            # Display existing signature
+            try:
+                sig_bytes = base64.b64decode(existing_signature)
+                sig_img = Image.open(io.BytesIO(sig_bytes))
+                st.image(sig_img, caption="Current Signature", width=400)
+            except:
+                pass
+        
         # Calculate aspect ratio: width 1.8783 in / height 0.6261 in = 3:1 ratio
         # Canvas width 400 -> height should be 133 to maintain ratio
         canvas_result = st_canvas(
@@ -562,7 +578,20 @@ By signing below, you're confirming that the installation order is complete and 
                 
                 # Store signature if provided
                 if canvas_result.image_data is not None:
-                    st.session_state.customer_signature = canvas_result
+                    import numpy as np
+                    # Check if there's actual drawing on the canvas
+                    if np.any(canvas_result.image_data[:, :, 3] > 0):
+                        # Convert signature to base64 string for storage
+                        sig_img = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
+                        sig_buffer = io.BytesIO()
+                        sig_img.save(sig_buffer, format='PNG')
+                        sig_buffer.seek(0)
+                        sig_base64 = base64.b64encode(sig_buffer.getvalue()).decode('utf-8')
+                        
+                        # Save signature as base64 in customer data
+                        customer_data['signature_base64'] = sig_base64
+                        st.session_state.customer_data = customer_data
+                        st.session_state.customer_signature = canvas_result
                 
                 # Automatically send to dashboard immediately upon completion
                 with st.spinner("Saving to dashboard..."):
