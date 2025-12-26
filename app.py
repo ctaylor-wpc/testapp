@@ -49,9 +49,9 @@ def load_existing_install(install_data):
     st.session_state.plant_count = len(install_data['plants_data'])
     st.session_state.editing_existing = True
     
-    # Set phase to 2 so customer data form appears with pre-filled values
-    st.session_state.phase = 2
-    st.session_state.step = 'customer_info'
+    # Start at installation details (Phase 1, Step B) so user can navigate through all sections
+    st.session_state.phase = 1
+    st.session_state.step = 'B'
 
 
 # STEP 1: Input validation and character cleaning functions
@@ -338,20 +338,45 @@ def main():
             if st.session_state.editing_existing:
                 st.info("✏️ Editing existing install")
             
+            # Get existing installation data if available
+            existing_install = st.session_state.get('installation_data', {})
+            
             col1, col2 = st.columns(2)
             
             with col1:
-                origin_location = st.selectbox("Sold From:", ["Frankfort", "Lexington"])
-                mulch_type = st.selectbox("Mulch Type:", MULCH_TYPE_OPTIONS)
-                tree_stakes = st.number_input("Number of Tree Stakes:", min_value=0, step=1)
-                deer_guards = st.number_input("Number of Deer Guards:", min_value=0, step=1)
-                installation_type = st.selectbox("Installation Type:", INSTALLATION_TYPE_OPTIONS)
+                origin_idx = 0
+                if existing_install.get('origin_location') == "Lexington":
+                    origin_idx = 1
+                origin_location = st.selectbox("Sold From:", ["Frankfort", "Lexington"], index=origin_idx)
+                
+                mulch_idx = 0
+                existing_mulch = existing_install.get('mulch_type', '')
+                if existing_mulch in MULCH_TYPE_OPTIONS:
+                    mulch_idx = MULCH_TYPE_OPTIONS.index(existing_mulch)
+                mulch_type = st.selectbox("Mulch Type:", MULCH_TYPE_OPTIONS, index=mulch_idx)
+                
+                tree_stakes = st.number_input("Number of Tree Stakes:", 
+                    min_value=0, step=1, 
+                    value=int(existing_install.get('tree_stakes_quantity', 0)))
+                
+                deer_guards = st.number_input("Number of Deer Guards:", 
+                    min_value=0, step=1,
+                    value=int(existing_install.get('deer_guards_quantity', 0)))
+                
+                install_idx = 0
+                existing_install_type = existing_install.get('installation_type', '')
+                if existing_install_type in INSTALLATION_TYPE_OPTIONS:
+                    install_idx = INSTALLATION_TYPE_OPTIONS.index(existing_install_type)
+                installation_type = st.selectbox("Installation Type:", INSTALLATION_TYPE_OPTIONS, index=install_idx)
             
             with col2:
                 st.subheader("Install Address")
-                street_address = st.text_input("Street Address:")
-                city = st.text_input("City:")
-                zip_code = st.text_input("Zip:")
+                street_address = st.text_input("Street Address:", 
+                    value=existing_install.get('customer_street_address', ''))
+                city = st.text_input("City:", 
+                    value=existing_install.get('customer_city', ''))
+                zip_code = st.text_input("Zip:", 
+                    value=existing_install.get('customer_zip', ''))
             
             if st.button("Calculate Quote"):
                 if street_address and city and zip_code:
@@ -397,20 +422,33 @@ def main():
                 
                 st.markdown(f"### **Total: ${pricing_data.get('final_total', 0):.2f}**")
                 
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 with col1:
                     if st.button("Move Forward with Quote"):
                         st.session_state.phase = 2
                         st.rerun()
                 
                 with col2:
-                    if st.button("No, Restart"):
+                    if st.button("Edit Installation Details"):
+                        st.session_state.step = 'B'
+                        st.rerun()
+                
+                with col3:
+                    if st.button("Start Over"):
                         clear_all_data()
                         st.rerun()
     
     # Phase 2: Customer Data with Signature
     elif st.session_state.phase == 2:
         st.header("Customer Information")
+        
+        # Add navigation button to go back to installation details
+        if st.button("← Back to Installation Details"):
+            st.session_state.phase = 1
+            st.session_state.step = 'C'
+            st.rerun()
+        
+        st.markdown("---")
         
         # Get existing customer data if editing
         existing_customer = st.session_state.get('customer_data', {})

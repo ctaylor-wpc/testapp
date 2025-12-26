@@ -139,20 +139,26 @@ def save_install_state(install_id, plants_data, installation_data, customer_data
             pricing_json
         ]
         
-        # Check if install_id exists and update that specific row
-        try:
-            cell = state_sheet.find(install_id, in_column=1)
-            if cell:
-                # Update existing row by overwriting each cell
-                row_num = cell.row
-                state_sheet.update(f'A{row_num}:G{row_num}', [row_data], value_input_option='USER_ENTERED')
-                return True
-        except:
-            pass  # Not found, will append
+        # Get all values from column A (Install IDs) to find if this ID exists
+        all_install_ids = state_sheet.col_values(1)
         
-        # Append new row if install_id doesn't exist
-        state_sheet.append_row(row_data, value_input_option='USER_ENTERED')
-        return True
+        # Check if install_id exists (skip header row)
+        row_to_update = None
+        for i, cell_value in enumerate(all_install_ids):
+            if i == 0:  # Skip header
+                continue
+            if str(cell_value) == str(install_id):
+                row_to_update = i + 1  # +1 because row numbers are 1-indexed
+                break
+        
+        if row_to_update:
+            # Update existing row by overwriting each cell
+            state_sheet.update(f'A{row_to_update}:G{row_to_update}', [row_data], value_input_option='USER_ENTERED')
+            return True
+        else:
+            # Append new row if install_id doesn't exist
+            state_sheet.append_row(row_data, value_input_option='USER_ENTERED')
+            return True
         
     except Exception as e:
         st.error(f"Failed to save install state: {e}")
