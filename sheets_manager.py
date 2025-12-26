@@ -105,6 +105,7 @@ def save_install_state(install_id, plants_data, installation_data, customer_data
     """
     Save complete install state to a separate tab in the Google Sheet.
     This allows loading and editing existing installs.
+    If install_id already exists, it UPDATES that row instead of creating a new one.
     """
     try:
         client = get_gspread_client()
@@ -138,17 +139,18 @@ def save_install_state(install_id, plants_data, installation_data, customer_data
             pricing_json
         ]
         
-        # Check if install_id exists and update, otherwise append
+        # Check if install_id exists and update that specific row
         try:
             cell = state_sheet.find(install_id, in_column=1)
             if cell:
-                # Update existing row
-                state_sheet.update(f'A{cell.row}:G{cell.row}', [row_data], value_input_option='USER_ENTERED')
+                # Update existing row by overwriting each cell
+                row_num = cell.row
+                state_sheet.update(f'A{row_num}:G{row_num}', [row_data], value_input_option='USER_ENTERED')
                 return True
         except:
             pass  # Not found, will append
         
-        # Append new row
+        # Append new row if install_id doesn't exist
         state_sheet.append_row(row_data, value_input_option='USER_ENTERED')
         return True
         

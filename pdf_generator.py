@@ -189,20 +189,25 @@ def generate_pdf(plants_data, installation_data, customer_data, pricing_data, cu
                             for widget in widgets:
                                 if widget.field_name == "customer_signature":
                                     signature_field_found = True
-                                    # Get the field's rectangle
-                                    field_rect = widget.rect
                                     
-                                    # Adjust rectangle: move up 5 points and expand by 10%
+                                    # Target position based on your specifications:
+                                    # Upper left: (3.674 in, 9.3621 in)
+                                    # Height: 0.6261 in, Width: 1.8783 in (can go up to 2.853 in)
+                                    # Convert inches to points (1 inch = 72 points)
+                                    x0 = 3.674 * 72  # = 264.528
+                                    y0 = 9.3621 * 72  # = 674.0712
+                                    width = 1.8783 * 72  # = 135.2376
+                                    height = 0.6261 * 72  # = 45.0792
+                                    
+                                    # Create rectangle with exact specifications
                                     adjusted_rect = fitz.Rect(
-                                        field_rect.x0,
-                                        field_rect.y0 - 5,  # Move up by 5 points
-                                        field_rect.x1,
-                                        field_rect.y1 - 5   # Move up by 5 points
+                                        x0,
+                                        y0,
+                                        x0 + width,
+                                        y0 + height
                                     )
-                                    # Expand by 10%
-                                    adjusted_rect = adjusted_rect * 1.05
                                     
-                                    # Place image in the adjusted signature field location
+                                    # Place image in the signature field location
                                     if adjusted_rect and adjusted_rect.is_valid and not adjusted_rect.is_empty:
                                         page.insert_image(adjusted_rect, stream=sig_bytes.getvalue(), keep_proportion=True)
                                         signature_placed = True
@@ -221,7 +226,7 @@ def generate_pdf(plants_data, installation_data, customer_data, pricing_data, cu
                         # Adjusted position: 3x further right (50 -> 150), 50% smaller
                         # Original: 50, 650, 250, 720 (200 wide x 70 tall)
                         # New: 150, 650, 250, 685 (100 wide x 35 tall - 50% of original size)
-                        rect = fitz.Rect(140, 600, 260, 635)
+                        rect = fitz.Rect(150, 650, 250, 685)
                         
                         if rect and rect.is_valid and not rect.is_empty:
                             page.insert_image(rect, stream=sig_bytes.getvalue(), keep_proportion=True)

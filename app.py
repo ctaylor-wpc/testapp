@@ -48,8 +48,10 @@ def load_existing_install(install_data):
     st.session_state.install_id = install_data['install_id']
     st.session_state.plant_count = len(install_data['plants_data'])
     st.session_state.editing_existing = True
-    st.session_state.phase = 1
-    st.session_state.step = 'B'
+    
+    # Set phase to 2 so customer data form appears with pre-filled values
+    st.session_state.phase = 2
+    st.session_state.step = 'customer_info'
 
 
 # STEP 1: Input validation and character cleaning functions
@@ -410,54 +412,91 @@ def main():
     elif st.session_state.phase == 2:
         st.header("Customer Information")
         
+        # Get existing customer data if editing
+        existing_customer = st.session_state.get('customer_data', {})
+        
         col1, col2 = st.columns(2)
         
         with col1:
-            customer_name = st.text_input("Customer Name:*", key="customer_name")
-            customer_email = st.text_input("Email Address:*", key="customer_email")
-            customer_phone = st.text_input("Phone Number:*", key="customer_phone")
-            customer_subdivision = st.text_input("Subdivision:*", key="customer_subdivision")
-            customer_cross_street = st.text_input("Nearest Cross Street:*", key="customer_cross_street")
-            install_location = st.text_input("Where will this be installed in the yard?*", key="install_location")
+            customer_name = st.text_input("Customer Name:*", 
+                value=existing_customer.get('customer_name', ''),
+                key="customer_name")
+            customer_email = st.text_input("Email Address:*", 
+                value=existing_customer.get('customer_email', ''),
+                key="customer_email")
+            customer_phone = st.text_input("Phone Number:*", 
+                value=existing_customer.get('customer_phone', ''),
+                key="customer_phone")
+            customer_subdivision = st.text_input("Subdivision:*", 
+                value=existing_customer.get('customer_subdivision', ''),
+                key="customer_subdivision")
+            customer_cross_street = st.text_input("Nearest Cross Street:*", 
+                value=existing_customer.get('customer_cross_street', ''),
+                key="customer_cross_street")
+            install_location = st.text_input("Where will this be installed in the yard?*", 
+                value=existing_customer.get('install_location', ''),
+                key="install_location")
             
         with col2:
-            customer_number_response = st.text_input("Customer Number (if known):", key="customer_number")
-            order_number_response = st.text_input("Order Number (if known):", key="order_number")
+            customer_number_response = st.text_input("Customer Number (if known):", 
+                value=existing_customer.get('customer_number', ''),
+                key="customer_number")
+            order_number_response = st.text_input("Order Number (if known):", 
+                value=existing_customer.get('order_number', ''),
+                key="order_number")
 
             col1a, col2a = st.columns(2)
 
             with col1a:
-                gate_response = st.radio("Is there a gate?*", ["Yes", "No"], key="gate_response")
+                # Set default index based on existing data
+                gate_options = ["Yes", "No"]
+                gate_default = gate_options.index(existing_customer.get('gate_response', 'No'))
+                gate_response = st.radio("Is there a gate?*", gate_options, index=gate_default, key="gate_response")
 
             with col2a:
-                gate_width = st.radio("Is it a minimum of 42\" wide?", ["Yes", "No"], key="gate_width")
+                gate_width_default = gate_options.index(existing_customer.get('gate_width', 'No'))
+                gate_width = st.radio("Is it a minimum of 42\" wide?", gate_options, index=gate_width_default, key="gate_width")
 
-            dogs_response = st.radio("Are there dogs?*", ["Yes", "No"], key="dogs_response")
+            dogs_default = gate_options.index(existing_customer.get('dogs_response', 'No'))
+            dogs_response = st.radio("Are there dogs?*", gate_options, index=dogs_default, key="dogs_response")
 
             utilities_check = st.multiselect(
                 "Mark Any Obstacles Near Planting:*",
                 options=UTILITIES_OPTIONS,
+                default=existing_customer.get('utilities_check', []),
                 key="utilities_check"
             )
 
             if not utilities_check:
                 st.warning('Please select at least "No Obstacles Near Planting."')
 
-        notes = st.text_area("Notes:", key="notes")
-        employee_initials = st.text_input("Employee Initials:", key="employee_initials")
+        notes = st.text_area("Notes:", 
+            value=existing_customer.get('notes', ''),
+            key="notes")
+        employee_initials = st.text_input("Employee Initials:", 
+            value=existing_customer.get('employee_initials', ''),
+            key="employee_initials")
         
         # Customer Signature Canvas
         st.markdown("---")
         st.subheader("Customer Signature")
-        st.write("Please sign below:")
         
+        # Add the agreement text
+        st.markdown("""
+By signing below, you're confirming that the installation order is complete and accurate and you authorize the work to proceed as written. You accept responsibility for notifying us of and marking any obstructions not identified by Kentucky 811 & understand that Wilson Nurseries, Inc. assumes no responsibility for any damages or repair costs associated with unmarked or incorrectly marked lines. You understand that changes to this scope of work require approval and that additional labor will be billed at $75 per man hour. You agree to pay remaining charges upon completion.
+
+**Please sign here:**
+        """)
+        
+        # Calculate aspect ratio: width 1.8783 in / height 0.6261 in = 3:1 ratio
+        # Canvas width 400 -> height should be 133 to maintain ratio
         canvas_result = st_canvas(
             fill_color="rgba(255, 255, 255, 0)",
             stroke_width=2,
             stroke_color="#000000",
             background_color="#FFFFFF",
-            height=200,
-            width=600,
+            height=133,  # Adjusted to match signature field aspect ratio (3:1)
+            width=400,
             drawing_mode="freedraw",
             key="customer_signature_canvas",
         )
@@ -487,60 +526,30 @@ def main():
                 if canvas_result.image_data is not None:
                     st.session_state.customer_signature = canvas_result
                 
-                st.session_state.phase = 3
-                st.rerun()
-            else:
-                st.error("Please fill in all required fields marked with *")
-    
-    # Phase 3: PDF Generation and Completion
-    elif st.session_state.phase == 3:
-        st.header("Quote Completed!")
-        
-        st.success("Your quote has been generated successfully!")
-
-        # Get signature if it exists
-        customer_signature = st.session_state.get('customer_signature', None)
-        
-        # Generate PDF
-        pdf_buffer = generate_pdf(
-            st.session_state.plants, 
-            st.session_state.installation_data, 
-            st.session_state.customer_data, 
-            st.session_state.pricing_data,
-            customer_signature
-        )
-
-        today_str = datetime.datetime.today().strftime("%m%d%Y")
-        customer_name_clean = st.session_state.customer_data['customer_name'].replace(" ", "_")
-        install_id = st.session_state.get('install_id', '')
-        
-        if install_id:
-            pdf_filename = f"{install_id}-{customer_name_clean}-{today_str}-Installation.pdf"
-        else:
-            pdf_filename = f"{customer_name_clean}-{today_str}-Installation.pdf"
-
-        if pdf_buffer:
-            st.download_button(
-                label="Download PDF",
-                data=pdf_buffer,
-                file_name=pdf_filename,
-                mime="application/pdf"
-            )
-        
-        st.markdown("---")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            if st.button("Create a New Installation"):
-                clear_all_data()
-                st.rerun()
-
-        with col2:
-            if st.button("Send to Google Sheet Dashboard"):
-                if not st.session_state.get("customer_data") or not st.session_state.get("installation_data") or not st.session_state.get("pricing_data"):
-                    st.error("Missing data – please complete the quote before sending to the dashboard.")
-                else:
+                # Automatically send to dashboard immediately upon completion
+                with st.spinner("Saving to dashboard..."):
                     try:
+                        # Get signature if it exists
+                        customer_signature = st.session_state.get('customer_signature', None)
+                        
+                        # Generate PDF
+                        pdf_buffer = generate_pdf(
+                            st.session_state.plants, 
+                            st.session_state.installation_data, 
+                            st.session_state.customer_data, 
+                            st.session_state.pricing_data,
+                            customer_signature
+                        )
+
+                        today_str = datetime.datetime.today().strftime("%m%d%Y")
+                        customer_name_clean = st.session_state.customer_data['customer_name'].replace(" ", "_")
+                        install_id = st.session_state.get('install_id', '')
+                        
+                        if install_id:
+                            pdf_filename = f"{install_id}-{customer_name_clean}-{today_str}-Installation.pdf"
+                        else:
+                            pdf_filename = f"{customer_name_clean}-{today_str}-Installation.pdf"
+                        
                         # Upload PDF first
                         pdf_buffer.seek(0)
                         pdf_link = upload_pdf_to_drive(pdf_buffer, pdf_filename, st.session_state.get('install_id'))
@@ -565,10 +574,43 @@ def main():
                                 st.session_state.pricing_data
                             )
                             
-                            st.success(f"Install added to Dashboard ✅ (ID: {install_id})")
+                            st.session_state.install_id = install_id
+                            st.session_state.pdf_buffer = pdf_buffer
+                            st.session_state.pdf_filename = pdf_filename
+                            
+                            st.session_state.phase = 3
+                            st.rerun()
                         
                     except Exception as e:
-                        st.error(f"Failed to send to Google Sheet: {e}")
+                        st.error(f"Failed to save to dashboard: {e}")
+                
+            else:
+                st.error("Please fill in all required fields marked with *")
+    
+    # Phase 3: PDF Generation and Completion
+    elif st.session_state.phase == 3:
+        st.header("Quote Completed!")
+        
+        st.success(f"Your quote has been saved to the dashboard! (Install ID: {st.session_state.get('install_id', 'N/A')})")
+
+        # Get the PDF from session state
+        pdf_buffer = st.session_state.get('pdf_buffer')
+        pdf_filename = st.session_state.get('pdf_filename', 'installation.pdf')
+
+        if pdf_buffer:
+            pdf_buffer.seek(0)
+            st.download_button(
+                label="Download PDF",
+                data=pdf_buffer,
+                file_name=pdf_filename,
+                mime="application/pdf"
+            )
+        
+        st.markdown("---")
+        
+        if st.button("Create a New Installation"):
+            clear_all_data()
+            st.rerun()
 
 
 if __name__ == "__main__":
