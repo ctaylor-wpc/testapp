@@ -194,8 +194,8 @@ def generate_pdf(plants_data, installation_data, customer_data, pricing_data, cu
                                     # Upper left: (3.674 in, 9.3621 in)
                                     # Height: 0.6261 in, Width: 1.8783 in (can go up to 2.853 in)
                                     # Convert inches to points (1 inch = 72 points)
-                                    x0 = 3.674 * 72  # = 264.528
-                                    y0 = 9.3621 * 72  # = 674.0712
+                                    x0 = 4 * 72  # = 264.528
+                                    y0 = 10 * 72  # = 674.0712
                                     width = 1.8783 * 72  # = 135.2376
                                     height = 0.6261 * 72  # = 45.0792
                                     
