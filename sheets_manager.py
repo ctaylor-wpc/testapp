@@ -1,4 +1,4 @@
-# sheets_manager.py
+# sheets_manager.py Version 4
 # Google Sheets integration for dashboard and state management
 
 import streamlit as st
