@@ -1,4 +1,4 @@
-# pdf_generator.py Version 12
+# pdf_generator.py Version 13
 # PDF generation and Google Drive upload functionality
 
 import streamlit as st
@@ -223,10 +223,7 @@ def generate_pdf(plants_data, installation_data, customer_data, pricing_data, cu
                     if not signature_placed:
                         page = doc[-1]
                         
-                        # Adjusted position: 3x further right (50 -> 150), 50% smaller
-                        # Original: 50, 650, 250, 720 (200 wide x 70 tall)
-                        # New: 150, 650, 250, 685 (100 wide x 35 tall - 50% of original size)
-                        rect = fitz.Rect(265, 690, 465, 725)
+                        rect = fitz.Rect(265, 684, 365, 719)
                         
                         if rect and rect.is_valid and not rect.is_empty:
                             page.insert_image(rect, stream=sig_bytes.getvalue(), keep_proportion=True)
