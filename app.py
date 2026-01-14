@@ -653,7 +653,15 @@ By signing below, you're confirming that the installation order is complete and 
                 
             else:
                 st.error("Please fill in all required fields marked with *")
-    
+
+    # Debug signature state
+    if customer_signature:
+        st.info(f"Signature object exists: {type(customer_signature)}")
+        if hasattr(customer_signature, 'image_data'):
+            st.info(f"Has image_data: {customer_signature.image_data is not None}")
+    else:
+        st.warning("No signature object found") 
+
     # Phase 3: PDF Generation and Completion
     elif st.session_state.phase == 3:
         st.header("Quote Completed!")
