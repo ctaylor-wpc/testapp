@@ -1,4 +1,4 @@
-# sheets_manager.py Version 4
+# sheets_manager.py
 # Google Sheets integration for dashboard and state management
 
 import streamlit as st
@@ -10,10 +10,6 @@ from config import SCOPES, SHEET_ID
 
 
 def get_service_account_info_from_secrets():
-    """
-    Reads service account JSON stored in st.secrets["gcp"]["service_account_json"].
-    Handles either a dict or a JSON string (escaped newlines etc).
-    """
     sa = st.secrets.get("gcp", {}).get("service_account_json")
     if not sa:
         raise KeyError("Service account JSON not found: check st.secrets['gcp']['service_account_json']")
@@ -23,23 +19,25 @@ def get_service_account_info_from_secrets():
 
 
 def get_gspread_client():
-    """Get authenticated gspread client"""
     sa_info = get_service_account_info_from_secrets()
     creds = Credentials.from_service_account_info(sa_info, scopes=SCOPES)
     return gspread.authorize(creds)
 
 
 def send_to_dashboard(customer_data, installation_data, pricing_data, plants_data, pdf_link, install_id=None):
+
+
     """
     Send installation data to Google Sheet dashboard.
     If install_id is provided, update existing row. Otherwise, append new row.
     Returns the install_id (generated or existing).
     """
+
+
     try:
         client = get_gspread_client()
         sheet = client.open_by_key(SHEET_ID).sheet1
         
-        # Prepare row data
         customer_name = customer_data.get("customer_name", "")
         address = f"{installation_data.get('customer_street_address','')}, {installation_data.get('customer_city','')}, KY {installation_data.get('customer_zip','')}".strip().strip(",")
         phone = customer_data.get("customer_phone", "")
@@ -52,46 +50,82 @@ def send_to_dashboard(customer_data, installation_data, pricing_data, plants_dat
         employee_initials = customer_data.get("employee_initials", "")
         origin_location = installation_data.get("origin_location", "")
         
-        # Generate install_id if not provided
+        plant_list = []
+        for plant_id, plant in plants_data.items():
+            qty = plant.get('quantity', 0)
+            material = plant.get('plant_material', '')
+            size = plant.get('size', '')
+            price = plant.get('price', 0)
+            discount_pct = plant.get('discount_percent', 0)
+            discount_dlr = plant.get('discount_dollars', 0)
+            
+            plant_str = f"{qty}x {material} ({size}) - ${price:.2f}"
+            if discount_pct > 0:
+                plant_str += f" ({discount_pct}% off)"
+            if discount_dlr > 0:
+                plant_str += f" (${discount_dlr:.2f} off)"
+            
+            plant_list.append(plant_str)
+        
+        plant_list_text = "\n".join(plant_list)
+        
         if not install_id:
             import random
             install_id = str(random.randint(100000, 999999))
         
         row_data = [
-            customer_name,              # A Customer Name
-            address,                    # B Address
-            phone,                      # C Phone Number
-            f"${total_amount:.2f}",     # D Total Amount
-            "Sold",                     # E Current Status
-            "",                         # F Notes
-            sold_on,                    # G Sold On
-            "",                         # H BUD Called On
-            "",                         # I BUD Notes
-            "",                         # J BUD Clear On
-            "",                         # K Scheduled For
-            "",                         # L Completed
-            pdf_link,                   # M PDF File
-            customer_subdivision,       # N Subdivision (hidden)
-            customer_cross_street,      # O Cross Street (hidden)
-            install_location,           # P Install Location (hidden)
-            employee_initials,          # Q Employee Initials (hidden)
-            origin_location,            # R Origin Location (hidden)
-            install_id                  # S Install ID (hidden)
+            customer_name,
+            address,
+            phone,
+            f"${total_amount:.2f}",
+            "Sold",
+            notes,
+            sold_on,
+            "",
+            "",
+            "",
+            "",
+            "",
+            pdf_link,
+            customer_subdivision,
+            customer_cross_street,
+            install_location,
+            employee_initials,
+            origin_location,
+            plant_list_text,
+            customer_data.get("customer_number", ""),
+            customer_data.get("order_number", ""),
+            installation_data.get("mulch_type", ""),
+            installation_data.get("tree_stakes_quantity", 0),
+            installation_data.get("deer_guards_quantity", 0),
+            installation_data.get("installation_type", ""),
+            customer_data.get("gate_response", ""),
+            customer_data.get("gate_width", ""),
+            customer_data.get("dogs_response", ""),
+            " / ".join(customer_data.get("utilities_check", [])),
+            f"${pricing_data.get('plant_material_discount_total', 0):.2f}",
+            f"${pricing_data.get('installation_material_total', 0):.2f}",
+            f"${pricing_data.get('installation_cost', 0):.2f}",
+            f"${pricing_data.get('delivery_cost', 0):.2f}",
+            pricing_data.get('delivery_mileage', 0),
+            install_id
         ]
         
-        # Check if install_id exists and update, otherwise append
         if install_id:
-            # Try to find existing row with this install_id
-            try:
-                cell = sheet.find(install_id, in_column=19)  # Column S
-                if cell:
-                    # Update existing row
-                    sheet.update(f'A{cell.row}:S{cell.row}', [row_data], value_input_option='USER_ENTERED')
-                    return install_id
-            except:
-                pass  # Not found, will append
+            all_install_ids = sheet.col_values(35)
+            
+            row_to_update = None
+            for i, cell_value in enumerate(all_install_ids):
+                if i == 0:
+                    continue
+                if str(cell_value) == str(install_id):
+                    row_to_update = i + 1
+                    break
+            
+            if row_to_update:
+                sheet.update(f'A{row_to_update}:AI{row_to_update}', [row_data], value_input_option='USER_ENTERED')
+                return install_id
         
-        # Append new row
         sheet.append_row(row_data, value_input_option='USER_ENTERED')
         
         return install_id
@@ -102,25 +136,26 @@ def send_to_dashboard(customer_data, installation_data, pricing_data, plants_dat
 
 
 def save_install_state(install_id, plants_data, installation_data, customer_data, pricing_data):
+
+
     """
     Save complete install state to a separate tab in the Google Sheet.
     This allows loading and editing existing installs.
     If install_id already exists, it UPDATES that row instead of creating a new one.
     """
+
+
     try:
         client = get_gspread_client()
         workbook = client.open_by_key(SHEET_ID)
         
-        # Try to get or create "Install States" tab
         try:
             state_sheet = workbook.worksheet("Install States")
         except:
             state_sheet = workbook.add_worksheet(title="Install States", rows=1000, cols=20)
-            # Add headers
             headers = ["Install ID", "Customer Name", "Date Saved", "Plants Data", "Installation Data", "Customer Data", "Pricing Data"]
             state_sheet.append_row(headers)
         
-        # Serialize data as JSON
         plants_json = json.dumps(plants_data)
         installation_json = json.dumps(installation_data)
         customer_json = json.dumps(customer_data)
@@ -139,10 +174,8 @@ def save_install_state(install_id, plants_data, installation_data, customer_data
             pricing_json
         ]
         
-        # Get all values from column A (Install IDs) to find if this ID exists
         all_install_ids = state_sheet.col_values(1)
         
-        # Check if install_id exists (skip header row)
         row_to_update = None
         for i, cell_value in enumerate(all_install_ids):
             if i == 0:  # Skip header
@@ -152,11 +185,9 @@ def save_install_state(install_id, plants_data, installation_data, customer_data
                 break
         
         if row_to_update:
-            # Update existing row by overwriting each cell
             state_sheet.update(f'A{row_to_update}:G{row_to_update}', [row_data], value_input_option='USER_ENTERED')
             return True
         else:
-            # Append new row if install_id doesn't exist
             state_sheet.append_row(row_data, value_input_option='USER_ENTERED')
             return True
         
@@ -166,10 +197,14 @@ def save_install_state(install_id, plants_data, installation_data, customer_data
 
 
 def load_install_states():
+
+
     """
     Load all saved install states from Google Sheet.
     Returns a list of dictionaries with install data.
     """
+
+
     try:
         client = get_gspread_client()
         workbook = client.open_by_key(SHEET_ID)
@@ -177,9 +212,8 @@ def load_install_states():
         try:
             state_sheet = workbook.worksheet("Install States")
         except:
-            return []  # Tab doesn't exist yet
+            return []
         
-        # Get all records (skip header row)
         records = state_sheet.get_all_records()
         
         installs = []
@@ -195,7 +229,7 @@ def load_install_states():
                     'pricing_data': json.loads(record.get('Pricing Data', '{}'))
                 })
             except json.JSONDecodeError:
-                continue  # Skip invalid records
+                continue
         
         return installs
         
