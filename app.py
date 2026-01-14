@@ -49,12 +49,6 @@ def load_existing_install(install_data):
     st.session_state.customer_data = install_data['customer_data']
     st.session_state.pricing_data = install_data['pricing_data']
     st.session_state.install_id = install_data['install_id']
-
-    if 'signature_base64' in install_data['customer_data']:
-        st.session_state.customer_signature_base64 = install_data['customer_data']['signature_base64']
-    else:
-        st.session_state.customer_signature_base64 = None
-
     st.session_state.plant_count = len(install_data['plants_data'])
     st.session_state.editing_existing = True
     
@@ -582,34 +576,28 @@ By signing below, you're confirming that the installation order is complete and 
                 
                 st.session_state.customer_data = customer_data
                 
-                signature_drawn = False
-
+                # Store signature if provided
                 if canvas_result.image_data is not None:
+                    import numpy as np
+                    # Check if there's actual drawing on the canvas
                     if np.any(canvas_result.image_data[:, :, 3] > 0):
-                        signature_drawn = True
-
+                        # Convert signature to base64 string for storage
                         sig_img = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
                         sig_buffer = io.BytesIO()
                         sig_img.save(sig_buffer, format='PNG')
                         sig_buffer.seek(0)
                         sig_base64 = base64.b64encode(sig_buffer.getvalue()).decode('utf-8')
-
+                        
+                        # Save signature as base64 in customer data
                         customer_data['signature_base64'] = sig_base64
-                        st.session_state.customer_signature_base64 = sig_base64
-
-                if not signature_drawn:
-                    existing_sig = st.session_state.get('customer_signature_base64')
-                    if existing_sig:
-                        customer_data['signature_base64'] = existing_sig
-
-                st.session_state.customer_data = customer_data
-
+                        st.session_state.customer_data = customer_data
+                        st.session_state.customer_signature = canvas_result
                 
                 # Automatically send to dashboard immediately upon completion
                 with st.spinner("Saving to dashboard..."):
                     try:
                         # Get signature if it exists
-                        customer_signature = st.session_state.customer_data.get('signature_base64')
+                        customer_signature = st.session_state.get('customer_signature', None)
                         
                         # Generate PDF
                         pdf_buffer = generate_pdf(
@@ -665,6 +653,14 @@ By signing below, you're confirming that the installation order is complete and 
                 
             else:
                 st.error("Please fill in all required fields marked with *")
+
+    # Debug signature state
+    if customer_signature:
+        st.info(f"Signature object exists: {type(customer_signature)}")
+        if hasattr(customer_signature, 'image_data'):
+            st.info(f"Has image_data: {customer_signature.image_data is not None}")
+    else:
+        st.warning("No signature object found") 
 
     # Phase 3: PDF Generation and Completion
     elif st.session_state.phase == 3:
