@@ -68,24 +68,6 @@ def format_hours(data):
     if data.get('hours_40_plus'): hours.append("40+")
     return ", ".join(hours) if hours else "Not specified"
 
-def format_employers(employers):
-    """Format employment history"""
-    emp_list = []
-    for i, emp in enumerate(employers):
-        if emp.get('employer'):
-            emp_str = f"Employer {i+1}: {emp.get('employer', '')} | {emp.get('location', '')} | {emp.get('hire_date', '')} to {emp.get('end_date', '')} | Position: {emp.get('position', '')} | Pay: {emp.get('pay_rate', '')} | Reason for leaving: {emp.get('reason', '')}"
-            emp_list.append(emp_str)
-    return " || ".join(emp_list) if emp_list else "Not provided"
-
-def format_references(references):
-    """Format references"""
-    ref_list = []
-    for i, ref in enumerate(references):
-        if ref.get('name'):
-            ref_str = f"Reference {i+1}: {ref.get('name', '')} | {ref.get('contact', '')} | Relationship: {ref.get('relationship', '')}"
-            ref_list.append(ref_str)
-    return " || ".join(ref_list) if ref_list else "Not provided"
-
 def generate_application_pdf(data):
     """Generate a filled PDF from the application data"""
     try:
@@ -140,9 +122,6 @@ def generate_application_pdf(data):
             "reliable_transport": data.get('reliable_transport', ''),
             "submission_timestamp": data.get('submission_timestamp', ''),
             
-            # Employment
-            "employment_history": format_employers(data.get('employers', [])),
-            
             # Education
             "college_name": data.get('college_name', ''),
             "college_study": data.get('college_study', ''),
@@ -152,10 +131,43 @@ def generate_application_pdf(data):
             "hs_study": data.get('hs_study', ''),
             "hs_graduated": data.get('hs_graduated', ''),
             "hs_completion": data.get('hs_completion', ''),
-            
-            # References
-            "references": format_references(data.get('references', []))
         }
+        
+        # Add individual employer fields (up to 3 employers)
+        employers = data.get('employers', [])
+        for i in range(3):
+            emp_num = i + 1
+            if i < len(employers):
+                emp = employers[i]
+                pdf_data[f"employer{emp_num}_name"] = emp.get('employer', '')
+                pdf_data[f"employer{emp_num}_location"] = emp.get('location', '')
+                pdf_data[f"employer{emp_num}_hire"] = emp.get('hire_date', '')
+                pdf_data[f"employer{emp_num}_end"] = emp.get('end_date', '')
+                pdf_data[f"employer{emp_num}_position"] = emp.get('position', '')
+                pdf_data[f"employer{emp_num}_pay"] = emp.get('pay_rate', '')
+                pdf_data[f"employer{emp_num}_reason"] = emp.get('reason', '')
+            else:
+                pdf_data[f"employer{emp_num}_name"] = ''
+                pdf_data[f"employer{emp_num}_location"] = ''
+                pdf_data[f"employer{emp_num}_hire"] = ''
+                pdf_data[f"employer{emp_num}_end"] = ''
+                pdf_data[f"employer{emp_num}_position"] = ''
+                pdf_data[f"employer{emp_num}_pay"] = ''
+                pdf_data[f"employer{emp_num}_reason"] = ''
+        
+        # Add individual reference fields (up to 3 references)
+        references = data.get('references', [])
+        for i in range(3):
+            ref_num = i + 1
+            if i < len(references):
+                ref = references[i]
+                pdf_data[f"reference{ref_num}_name"] = ref.get('name', '')
+                pdf_data[f"reference{ref_num}_contact"] = ref.get('contact', '')
+                pdf_data[f"reference{ref_num}_relationship"] = ref.get('relationship', '')
+            else:
+                pdf_data[f"reference{ref_num}_name"] = ''
+                pdf_data[f"reference{ref_num}_contact"] = ''
+                pdf_data[f"reference{ref_num}_relationship"] = ''
         
         # Read template and fill fields
         template_pdf = PdfReader(template_path)
