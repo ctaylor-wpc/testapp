@@ -15,7 +15,7 @@ def get_email_config():
         'smtp_port': st.secrets["email"]["smtp_port"],
         'sender_email': st.secrets["email"]["sender_email"],
         'sender_password': st.secrets["email"]["sender_password"],
-        'company_email': 'info@wilsonnurseriesky.com'  # Company notification email
+        'company_email': 'info@wilsonnurseriesky.com'
     }
 
 def format_positions_email(positions):
@@ -203,7 +203,7 @@ def send_application_notification(data, pdf_buffer):
         # Create email message
         msg = MIMEMultipart()
         msg["From"] = config['sender_email']
-        msg["To"] = config['company_email']  # Send to company
+        msg["To"] = config['company_email']
         msg["Subject"] = f"Job Fair Application: {data.get('first_name', '')} {data.get('last_name', '')}"
         
         # Add email body
@@ -246,7 +246,7 @@ def send_confirmation_email(data):
         # Create email message
         msg = MIMEMultipart()
         msg["From"] = config['sender_email']
-        msg["To"] = data.get('email', '')  # Send to applicant
+        msg["To"] = data.get('email', '')
         msg["Subject"] = "Job Fair Interview Confirmation - Wilson Plant Co. + Sage Garden Cafe"
         
         # Add email body
