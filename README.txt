@@ -35,79 +35,87 @@ SETUP INSTRUCTIONS
 
 STEP 1: CREATE GOOGLE SHEET
 ----------------------------
-1. Go to Google Sheets and create a new spreadsheet
+1. Go to Google Sheets and create a new spreadsheet in your Shared Drive
 2. Name it "Applications"
 3. Create a worksheet named "2026"
-4. Add these 61 column headers in row 1 (columns A through BI):
+4. Add these 66 column headers in row 1 (columns A through BN):
 
    A: First Name
    B: Last Name
    C: Email
    D: Phone
-   E: Street Address
-   F: City
-   G: State
-   H: Zip
-   I: Interview Location
-   J: Interview Date
-   K: Interview Time
-   L: Positions Applied For
-   M: Hours Preferred
-   N: Expected Payrate
-   O: Why Applying
-   P: Special Training/Skills
-   Q: Legally Entitled to Work
-   R: Can Perform Physical Duties
-   S: Drug Test Willing
-   T: Background Check Willing
-   U: Valid Drivers License
-   V: Reliable Transportation
-   W: Submission Timestamp
-   X: Employer 1 Name
-   Y: Employer 1 Location
-   Z: Employer 1 Hire Date
-   AA: Employer 1 End Date
-   AB: Employer 1 Position
-   AC: Employer 1 Pay Rate
-   AD: Employer 1 Reason for Leaving
-   AE: Employer 2 Name
-   AF: Employer 2 Location
-   AG: Employer 2 Hire Date
-   AH: Employer 2 End Date
-   AI: Employer 2 Position
-   AJ: Employer 2 Pay Rate
-   AK: Employer 2 Reason for Leaving
-   AL: Employer 3 Name
-   AM: Employer 3 Location
-   AN: Employer 3 Hire Date
-   AO: Employer 3 End Date
-   AP: Employer 3 Position
-   AQ: Employer 3 Pay Rate
-   AR: Employer 3 Reason for Leaving
-   AS: College Name & City
-   AT: College Area of Study
-   AU: College Graduated
-   AV: College Completion Date
-   AW: High School Name & City
-   AX: High School Area of Study
-   AY: High School Graduated
-   AZ: High School Completion Date
-   BA: Reference 1 Name
-   BB: Reference 1 Contact
-   BC: Reference 1 Relationship
-   BD: Reference 2 Name
-   BE: Reference 2 Contact
-   BF: Reference 2 Relationship
-   BG: Reference 3 Name
-   BH: Reference 3 Contact
-   BI: Reference 3 Relationship
+   E: Alternate Phone
+   F: Date of Birth
+   G: Street Address
+   H: City
+   I: State
+   J: Zip
+   K: Interview Location
+   L: Interview Date
+   M: Interview Time
+   N: Positions Applied For
+   O: Hours Preferred
+   P: Expected Payrate
+   Q: Availability Restrictions
+   R: Available to Start
+   S: Why Applying
+   T: Special Training/Skills
+   U: Legally Entitled to Work
+   V: Can Perform Physical Duties
+   W: Drug Test Willing
+   X: Background Check Willing
+   Y: Valid Drivers License
+   Z: Reliable Transportation
+   AA: Submission Timestamp
+   AA: Submission Timestamp
+   AB: Employer 1 Name
+   AC: Employer 1 Location
+   AD: Employer 1 Hire Date
+   AE: Employer 1 End Date
+   AF: Employer 1 Position
+   AG: Employer 1 Pay Rate
+   AH: Employer 1 Reason for Leaving
+   AI: Employer 2 Name
+   AJ: Employer 2 Location
+   AK: Employer 2 Hire Date
+   AL: Employer 2 End Date
+   AM: Employer 2 Position
+   AN: Employer 2 Pay Rate
+   AO: Employer 2 Reason for Leaving
+   AP: Employer 3 Name
+   AQ: Employer 3 Location
+   AR: Employer 3 Hire Date
+   AS: Employer 3 End Date
+   AT: Employer 3 Position
+   AU: Employer 3 Pay Rate
+   AV: Employer 3 Reason for Leaving
+   AW: College Name & City
+   AX: College Area of Study
+   AY: College Graduated
+   AZ: College Completion Date
+   BA: High School Name & City
+   BB: High School Area of Study
+   BC: High School Graduated
+   BD: High School Completion Date
+   BE: Reference 1 Name
+   BF: Reference 1 Contact
+   BG: Reference 1 Relationship
+   BH: Reference 2 Name
+   BI: Reference 2 Contact
+   BJ: Reference 2 Relationship
+   BK: Reference 3 Name
+   BL: Reference 3 Contact
+   BM: Reference 3 Relationship
+   BN: PDF Link
 
 5. Note the Sheet ID from the URL (it's the long string between /d/ and /edit)
    The Sheet ID is already set to: 1QZ5gO5farg4E03dhaSINJljvn6qfocUgvHH4tjOSkIc
    
-6. Share the sheet with your service account email:
+6. Make sure the sheet is in a Shared Drive (not "My Drive")
+   
+7. Share the Shared Drive with your service account email:
    delivery-app-calendar-access@deliverycalculator-462121.iam.gserviceaccount.com
-   Give it "Editor" permissions
+   Give it "Content Manager" or "Manager" permissions on the Shared Drive
 
 STEP 2: CREATE PDF TEMPLATE
 ----------------------------
@@ -118,17 +126,21 @@ The PDF should include these form fields (exact names):
 - first_name
 - last_name
 - email
+- phone
+- alternate_phone
+- dob
 - street_address
 - city
 - state
 - zip
-- phone
 - location
 - date
 - time_slot
 - positions
 - hours
 - expected_payrate
+- availability_restrictions
+- start_date
 - why_applying
 - special_training
 - legally_entitled
@@ -176,25 +188,20 @@ STEP 5: MANAGE SCHEDULING AVAILABILITY
 ---------------------------------------
 To grey out time slots as they fill up, edit application_scheduling.py:
 
-Find the UNAVAILABLE_SLOTS dictionary (around line 17) and add time slots:
+Find the UNAVAILABLE_SLOTS dictionary (around line 35) and add time slots:
 
 UNAVAILABLE_SLOTS = {
-    'LEXINGTON': {
-        '2026-02-18': ['10am-12pm'],  # This slot is now greyed out
-        '2026-02-19': [],
-        '2026-02-20': ['12pm-2pm', '2pm-4pm'],  # These two are greyed out
-        '2026-02-21': []
-    },
-    'FRANKFORT': {
-        '2026-02-18': [],
-        '2026-02-19': ['10am-12pm'],
-        '2026-02-20': [],
-        '2026-02-21': []
-    }
+    '2026-02-18': ['10am-12pm'],  # This slot is now greyed out
+    '2026-02-19': [],
+    '2026-02-20': ['12pm-2pm', '2pm-4pm'],  # These two are greyed out
+    '2026-02-21': []
 }
 
-To change dates, locations, or time slots entirely, edit the SCHEDULING_CONFIG
-dictionary at the top of application_scheduling.py.
+NOTE: The dates are now tied to specific locations:
+- Feb 18 & 19 are LEXINGTON only
+- Feb 20 & 21 are FRANKFORT only
+
+This is configured in the SCHEDULING_CONFIG at the top of application_scheduling.py.
 
 ================================================================================
 RUNNING THE APPLICATION

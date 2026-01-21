@@ -105,11 +105,13 @@ def generate_application_pdf(data):
             "first_name": data.get('first_name', ''),
             "last_name": data.get('last_name', ''),
             "email": data.get('email', ''),
+            "phone": data.get('phone', ''),
+            "alternate_phone": data.get('alternate_phone', ''),
+            "dob": data.get('dob', ''),
             "street_address": data.get('street_address', ''),
             "city": data.get('city', ''),
             "state": data.get('state', ''),
             "zip": data.get('zip', ''),
-            "phone": data.get('phone', ''),
             
             # Schedule
             "location": data.get('location', ''),
@@ -120,6 +122,12 @@ def generate_application_pdf(data):
             "positions": format_positions(data.get('positions', {})),
             "hours": format_hours(data),
             "expected_payrate": data.get('expected_payrate', ''),
+            
+            # Availability
+            "availability_restrictions": data.get('availability_restrictions', ''),
+            "start_date": data.get('start_date', ''),
+            
+            # About
             "why_applying": data.get('why_applying', ''),
             "special_training": data.get('special_training', ''),
             
@@ -171,6 +179,8 @@ def generate_application_pdf(data):
         
         # Add signature if present
         signature_base64 = data.get('signature_base64')
+        signature_placed = False
+        
         if signature_base64:
             try:
                 sig_bytes = base64.b64decode(signature_base64)
@@ -179,13 +189,33 @@ def generate_application_pdf(data):
                 sig_img.save(sig_buffer, format='PNG')
                 sig_buffer.seek(0)
                 
-                # Add signature to the last page (adjust coordinates as needed for your template)
-                page = doc[-1]
-                # These coordinates should match your PDF template's signature field location
-                rect = fitz.Rect(100, 650, 300, 700)  # Adjust as needed
+                # Try to find signature field first
+                for page_num, page in enumerate(doc):
+                    widgets = page.widgets()
+                    if widgets:
+                        for widget in widgets:
+                            if widget.field_name and 'signature' in widget.field_name.lower():
+                                # Get widget rectangle
+                                rect = widget.rect
+                                if rect and rect.is_valid and not rect.is_empty:
+                                    page.insert_image(rect, stream=sig_buffer.getvalue(), keep_proportion=True)
+                                    signature_placed = True
+                                    widget.field_flags |= 1 << 0  # Set ReadOnly
+                                    widget.update()
+                                    break
+                    if signature_placed:
+                        break
                 
-                if rect and rect.is_valid and not rect.is_empty:
-                    page.insert_image(rect, stream=sig_buffer.getvalue(), keep_proportion=True)
+                # If no signature field found, place on last page at default location
+                if not signature_placed:
+                    page = doc[-1]
+                    # Adjust these coordinates to match your PDF template
+                    rect = fitz.Rect(100, 650, 300, 700)
+                    
+                    if rect and rect.is_valid and not rect.is_empty:
+                        page.insert_image(rect, stream=sig_buffer.getvalue(), keep_proportion=True)
+                        signature_placed = True
+                        
             except Exception as e:
                 print(f"Could not add signature to PDF: {e}")
         

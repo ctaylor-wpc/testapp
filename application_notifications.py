@@ -15,7 +15,7 @@ def get_email_config():
         'smtp_port': st.secrets["email"]["smtp_port"],
         'sender_email': st.secrets["email"]["sender_email"],
         'sender_password': st.secrets["email"]["sender_password"],
-        'notify_email': st.secrets["email"]["notify_email"]
+        'company_email': 'info@wilsonnurseriesky.com'  # Company notification email
     }
 
 def format_positions_email(positions):
@@ -98,8 +98,8 @@ Reference {i+1}:
 """)
     return "\n".join(ref_text)
 
-def create_email_body(data):
-    """Create the email body text"""
+def create_company_email_body(data):
+    """Create the email body text for company notification"""
     email_body = f"""
 NEW JOB FAIR APPLICATION RECEIVED
 =====================================
@@ -108,6 +108,8 @@ APPLICANT INFORMATION:
 Name: {data.get('first_name', '')} {data.get('last_name', '')}
 Email: {data.get('email', '')}
 Phone: {data.get('phone', '')}
+Alternate Phone: {data.get('alternate_phone', 'Not provided')}
+Date of Birth: {data.get('dob', 'Not provided')}
 Address: {data.get('street_address', '')}, {data.get('city', '')}, {data.get('state', '')} {data.get('zip', '')}
 
 INTERVIEW SCHEDULE:
@@ -121,6 +123,10 @@ Positions Applied For:
 
 Hours Preferred: {format_hours_email(data)}
 Expected Payrate: {data.get('expected_payrate', 'Not specified')}
+
+AVAILABILITY:
+Restrictions: {data.get('availability_restrictions', 'None')}
+Available to Start: {data.get('start_date', 'Not specified')}
 
 WHY APPLYING:
 {data.get('why_applying', 'Not provided')}
@@ -161,9 +167,28 @@ Application PDF is attached.
 """
     return email_body
 
+def create_confirmation_email_body(data):
+    """Create the confirmation email body for the applicant"""
+    first_name = data.get('first_name', '')
+    date = data.get('date', '')
+    time = data.get('time_slot', '')
+    location = data.get('location', '')
+    address = data.get('address', '')
+    
+    email_body = f"""{first_name}, thanks for applying & signing up for our job fair. We look forward to meeting you at {date}, {time}. 
+
+As a reminder, your interview will be at our {location} store which is at {address}. When you arrive, head straight in and sign in at the register.
+
+Thanks again for your interest & time,
+
+-Chris Taylor
+Wilson Plant Co. + Sage Garden Cafe
+"""
+    return email_body
+
 def send_application_notification(data, pdf_buffer):
     """
-    Send email notification with application data and PDF attachment
+    Send email notification to company with application data and PDF attachment
     
     Args:
         data: Dictionary containing all application data
@@ -178,11 +203,11 @@ def send_application_notification(data, pdf_buffer):
         # Create email message
         msg = MIMEMultipart()
         msg["From"] = config['sender_email']
-        msg["To"] = config['notify_email']
+        msg["To"] = config['company_email']  # Send to company
         msg["Subject"] = f"Job Fair Application: {data.get('first_name', '')} {data.get('last_name', '')}"
         
         # Add email body
-        email_body = create_email_body(data)
+        email_body = create_company_email_body(data)
         msg.attach(MIMEText(email_body, "plain"))
         
         # Add PDF attachment
@@ -197,10 +222,45 @@ def send_application_notification(data, pdf_buffer):
         with smtplib.SMTP(config['smtp_server'], config['smtp_port']) as server:
             server.starttls()
             server.login(config['sender_email'], config['sender_password'])
-            server.sendmail(config['sender_email'], config['notify_email'], msg.as_string())
+            server.sendmail(config['sender_email'], config['company_email'], msg.as_string())
         
         return True
         
     except Exception as e:
-        st.error(f"Failed to send notification email: {e}")
+        st.error(f"Failed to send notification email to company: {e}")
+        return False
+
+def send_confirmation_email(data):
+    """
+    Send confirmation email to the applicant
+    
+    Args:
+        data: Dictionary containing all application data
+    
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    try:
+        config = get_email_config()
+        
+        # Create email message
+        msg = MIMEMultipart()
+        msg["From"] = config['sender_email']
+        msg["To"] = data.get('email', '')  # Send to applicant
+        msg["Subject"] = "Job Fair Interview Confirmation - Wilson Plant Co. + Sage Garden Cafe"
+        
+        # Add email body
+        email_body = create_confirmation_email_body(data)
+        msg.attach(MIMEText(email_body, "plain"))
+        
+        # Send email
+        with smtplib.SMTP(config['smtp_server'], config['smtp_port']) as server:
+            server.starttls()
+            server.login(config['sender_email'], config['sender_password'])
+            server.sendmail(config['sender_email'], data.get('email', ''), msg.as_string())
+        
+        return True
+        
+    except Exception as e:
+        st.error(f"Failed to send confirmation email to applicant: {e}")
         return False

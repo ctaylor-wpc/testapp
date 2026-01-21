@@ -7,9 +7,31 @@ from application import render_application_form
 from application_scheduling import render_scheduling_section, get_schedule_data
 from application_sheets_manager import send_application_to_sheet
 from application_pdf_generator import generate_application_pdf
-from application_notifications import send_application_notification
+from application_notifications import send_application_notification, send_confirmation_email
 
-st.set_page_config(page_title="Wilson Plant Co. + Sage Garden Cafe Job Fair", layout="wide")
+st.set_page_config(page_title="Wilson Plant Co. + Sage Garden Cafe Job Fair", layout="centered")
+
+# Custom CSS for mobile-friendly layout
+st.markdown("""
+<style>
+    /* Force single column layout */
+    .stTextInput, .stTextArea, .stSelectbox, .stRadio, .stCheckbox {
+        margin-bottom: 1rem;
+    }
+    
+    /* Improve form field styling */
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea {
+        font-size: 16px !important;
+    }
+    
+    /* Make headers more consistent */
+    h1, h2, h3 {
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Initialize session state
 def initialize_app():
@@ -47,13 +69,10 @@ def main():
     if st.session_state.phase == 1:
         st.header("Register for the Job Fair")
         
-        # Basic contact information
-        col1, col2 = st.columns(2)
-        with col1:
-            first_name = st.text_input("First Name:*", value=st.session_state.basic_info.get('first_name', ''))
-            email = st.text_input("Email Address:*", value=st.session_state.basic_info.get('email', ''))
-        with col2:
-            last_name = st.text_input("Last Name:*", value=st.session_state.basic_info.get('last_name', ''))
+        # Basic contact information - mobile-friendly single column
+        first_name = st.text_input("First Name *", value=st.session_state.basic_info.get('first_name', ''))
+        last_name = st.text_input("Last Name *", value=st.session_state.basic_info.get('last_name', ''))
+        email = st.text_input("Email Address *", value=st.session_state.basic_info.get('email', ''))
         
         st.markdown("---")
         
@@ -68,7 +87,7 @@ def main():
         
         schedule_data = render_scheduling_section()
         
-        if st.button("Continue to Application", type="primary"):
+        if st.button("Continue to Application", type="primary", use_container_width=True):
             if not all([first_name, last_name, email]):
                 st.error("Please fill in all required fields (First Name, Last Name, Email)")
             elif not schedule_data:
@@ -122,14 +141,27 @@ def main():
             # Generate PDF
             pdf_buffer = generate_application_pdf(full_data)
             
+            # Upload PDF to Google Drive and get link
+            from application_sheets_manager import upload_pdf_to_drive
+            pdf_filename = f"Application_{full_data['last_name']}_{full_data['first_name']}.pdf"
+            pdf_link = upload_pdf_to_drive(pdf_buffer, pdf_filename) if pdf_buffer else ""
+            
+            # Add PDF link to data
+            full_data['pdf_link'] = pdf_link
+            
             # Send to Google Sheets
             sheet_success = send_application_to_sheet(full_data)
             
-            # Send email notification
+            # Send email notification to company
             if pdf_buffer and sheet_success:
+                pdf_buffer.seek(0)  # Reset buffer
                 email_success = send_application_notification(full_data, pdf_buffer)
                 
-                if email_success:
+                # Send confirmation email to applicant
+                pdf_buffer.seek(0)  # Reset buffer again
+                confirmation_success = send_confirmation_email(full_data)
+                
+                if email_success and confirmation_success:
                     st.success("Your application has been submitted and you will receive a confirmation email shortly.")
                 else:
                     st.warning("Application saved, but confirmation email could not be sent.")
@@ -140,8 +172,9 @@ def main():
                 st.download_button(
                     label="📥 Download Your Application",
                     data=pdf_buffer,
-                    file_name=f"JobFair_Application_{full_data['last_name']}_{full_data['first_name']}.pdf",
-                    mime="application/pdf"
+                    file_name=pdf_filename,
+                    mime="application/pdf",
+                    use_container_width=True
                 )
             
             # Show confirmation details
@@ -152,7 +185,7 @@ def main():
             
             st.markdown("---")
             
-            if st.button("Submit Another Application"):
+            if st.button("Submit Another Application", use_container_width=True):
                 reset_app()
                 st.rerun()
                 

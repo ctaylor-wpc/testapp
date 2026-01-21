@@ -4,6 +4,8 @@
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
 import json
 
 # Configuration
@@ -13,6 +15,7 @@ SCOPES = [
 ]
 SHEET_ID = "1QZ5gO5farg4E03dhaSINJljvn6qfocUgvHH4tjOSkIc"
 WORKSHEET_NAME = "2026"
+PDF_FOLDER_ID = "1X5crtAwvuIgmgrGOSUR9M1gq21e0oUwh"  # Shared Drive folder
 
 def get_service_account_info_from_secrets():
     """Get service account info from Streamlit secrets"""
@@ -28,6 +31,49 @@ def get_gspread_client():
     sa_info = get_service_account_info_from_secrets()
     creds = Credentials.from_service_account_info(sa_info, scopes=SCOPES)
     return gspread.authorize(creds)
+
+def get_drive_service():
+    """Create and return Google Drive service"""
+    sa_info = get_service_account_info_from_secrets()
+    creds = Credentials.from_service_account_info(sa_info, scopes=SCOPES)
+    service = build("drive", "v3", credentials=creds)
+    return service
+
+def upload_pdf_to_drive(pdf_buffer, filename):
+    """
+    Upload PDF to Google Drive shared folder
+    
+    Args:
+        pdf_buffer: BytesIO buffer containing the PDF
+        filename: Name for the PDF file
+    
+    Returns:
+        str: URL to the uploaded file, or empty string if failed
+    """
+    try:
+        service = get_drive_service()
+        
+        file_metadata = {
+            "name": filename,
+            "parents": [PDF_FOLDER_ID]
+        }
+        
+        pdf_buffer.seek(0)
+        media = MediaIoBaseUpload(pdf_buffer, mimetype="application/pdf", resumable=True)
+        
+        uploaded_file = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields="id",
+            supportsAllDrives=True  # Important for Shared Drives
+        ).execute()
+        
+        file_id = uploaded_file.get("id")
+        return f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
+        
+    except Exception as e:
+        st.error(f"Failed to upload PDF to Google Drive: {e}")
+        return ""
 
 def format_positions_for_sheet(positions):
     """Format positions dictionary for sheet"""
@@ -62,68 +108,73 @@ def send_application_to_sheet(data):
     """
     Send application data to Google Sheet
     
-    IMPORTANT: Your Google Sheet needs these 50 columns (A-AX):
+    IMPORTANT: Your Google Sheet needs these 65 columns (A-BM):
     1. First Name
     2. Last Name
     3. Email
     4. Phone
-    5. Street Address
-    6. City
-    7. State
-    8. Zip
-    9. Interview Location
-    10. Interview Date
-    11. Interview Time
-    12. Positions Applied For
-    13. Hours Preferred
-    14. Expected Payrate
-    15. Why Applying
-    16. Special Training/Skills
-    17. Legally Entitled to Work
-    18. Can Perform Physical Duties
-    19. Drug Test Willing
-    20. Background Check Willing
-    21. Valid Drivers License
-    22. Reliable Transportation
-    23. Submission Timestamp
-    24. Employer 1 Name
-    25. Employer 1 Location
-    26. Employer 1 Hire Date
-    27. Employer 1 End Date
-    28. Employer 1 Position
-    29. Employer 1 Pay Rate
-    30. Employer 1 Reason for Leaving
-    31. Employer 2 Name
-    32. Employer 2 Location
-    33. Employer 2 Hire Date
-    34. Employer 2 End Date
-    35. Employer 2 Position
-    36. Employer 2 Pay Rate
-    37. Employer 2 Reason for Leaving
-    38. Employer 3 Name
-    39. Employer 3 Location
-    40. Employer 3 Hire Date
-    41. Employer 3 End Date
-    42. Employer 3 Position
-    43. Employer 3 Pay Rate
-    44. Employer 3 Reason for Leaving
-    45. College Name & City
-    46. College Area of Study
-    47. College Graduated
-    48. College Completion Date
-    49. High School Name & City
-    50. High School Area of Study
-    51. High School Graduated
-    52. High School Completion Date
-    53. Reference 1 Name
-    54. Reference 1 Contact
-    55. Reference 1 Relationship
-    56. Reference 2 Name
-    57. Reference 2 Contact
-    58. Reference 2 Relationship
-    59. Reference 3 Name
-    60. Reference 3 Contact
-    61. Reference 3 Relationship
+    5. Alternate Phone
+    6. Date of Birth
+    7. Street Address
+    8. City
+    9. State
+    10. Zip
+    11. Interview Location
+    12. Interview Date
+    13. Interview Time
+    14. Positions Applied For
+    15. Hours Preferred
+    16. Expected Payrate
+    17. Availability Restrictions
+    18. Available to Start
+    19. Why Applying
+    20. Special Training/Skills
+    21. Legally Entitled to Work
+    22. Can Perform Physical Duties
+    23. Drug Test Willing
+    24. Background Check Willing
+    25. Valid Drivers License
+    26. Reliable Transportation
+    27. Submission Timestamp
+    28. Employer 1 Name
+    29. Employer 1 Location
+    30. Employer 1 Hire Date
+    31. Employer 1 End Date
+    32. Employer 1 Position
+    33. Employer 1 Pay Rate
+    34. Employer 1 Reason for Leaving
+    35. Employer 2 Name
+    36. Employer 2 Location
+    37. Employer 2 Hire Date
+    38. Employer 2 End Date
+    39. Employer 2 Position
+    40. Employer 2 Pay Rate
+    41. Employer 2 Reason for Leaving
+    42. Employer 3 Name
+    43. Employer 3 Location
+    44. Employer 3 Hire Date
+    45. Employer 3 End Date
+    46. Employer 3 Position
+    47. Employer 3 Pay Rate
+    48. Employer 3 Reason for Leaving
+    49. College Name & City
+    50. College Area of Study
+    51. College Graduated
+    52. College Completion Date
+    53. High School Name & City
+    54. High School Area of Study
+    55. High School Graduated
+    56. High School Completion Date
+    57. Reference 1 Name
+    58. Reference 1 Contact
+    59. Reference 1 Relationship
+    60. Reference 2 Name
+    61. Reference 2 Contact
+    62. Reference 2 Relationship
+    63. Reference 3 Name
+    64. Reference 3 Contact
+    65. Reference 3 Relationship
+    66. PDF Link
     """
     try:
         client = get_gspread_client()
@@ -162,31 +213,35 @@ def send_application_to_sheet(data):
             else:
                 reference_data.extend(['', '', ''])
         
-        # Prepare row data (61 columns total)
+        # Prepare row data (66 columns total)
         row_data = [
-            # Columns 1-8: Basic info
+            # Columns 1-10: Basic info
             data.get('first_name', ''),
             data.get('last_name', ''),
             data.get('email', ''),
             data.get('phone', ''),
+            data.get('alternate_phone', ''),
+            data.get('dob', ''),
             data.get('street_address', ''),
             data.get('city', ''),
             data.get('state', ''),
             data.get('zip', ''),
             
-            # Columns 9-11: Interview schedule
+            # Columns 11-13: Interview schedule
             data.get('location', ''),
             data.get('date', ''),
             data.get('time_slot', ''),
             
-            # Columns 12-16: Position info
+            # Columns 14-20: Position and availability info
             format_positions_for_sheet(data.get('positions', {})),
             format_hours_for_sheet(data),
             data.get('expected_payrate', ''),
+            data.get('availability_restrictions', ''),
+            data.get('start_date', ''),
             data.get('why_applying', ''),
             data.get('special_training', ''),
             
-            # Columns 17-23: Legal info
+            # Columns 21-27: Legal info
             data.get('legally_entitled', ''),
             data.get('perform_duties', ''),
             data.get('drug_test', ''),
@@ -196,10 +251,10 @@ def send_application_to_sheet(data):
             data.get('submission_timestamp', ''),
         ]
         
-        # Columns 24-44: Add employer data (3 employers x 7 fields)
+        # Columns 28-48: Add employer data (3 employers x 7 fields)
         row_data.extend(employer_data)
         
-        # Columns 45-52: Education
+        # Columns 49-56: Education
         row_data.extend([
             data.get('college_name', ''),
             data.get('college_study', ''),
@@ -211,8 +266,11 @@ def send_application_to_sheet(data):
             data.get('hs_completion', '')
         ])
         
-        # Columns 53-61: Add reference data (3 references x 3 fields)
+        # Columns 57-65: Add reference data (3 references x 3 fields)
         row_data.extend(reference_data)
+        
+        # Column 66: PDF Link
+        row_data.append(data.get('pdf_link', ''))
         
         # Append row to sheet
         worksheet.append_row(row_data, value_input_option='USER_ENTERED')
