@@ -157,10 +157,6 @@ def main():
                 pdf_buffer.seek(0)  # Reset buffer
                 email_success = send_application_notification(full_data, pdf_buffer)
                 
-                # Send confirmation email to applicant
-                pdf_buffer.seek(0)  # Reset buffer again
-                confirmation_success = send_confirmation_email(full_data)
-                
                 if email_success and confirmation_success:
                     st.success("Your application has been submitted and you will receive a confirmation email shortly.")
                 else:
