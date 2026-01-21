@@ -6,6 +6,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
+from email.utils import formataddr
 
 # Email configuration from secrets
 def get_email_config():
@@ -15,6 +16,7 @@ def get_email_config():
         'smtp_port': st.secrets["email"]["smtp_port"],
         'sender_email': st.secrets["email"]["sender_email"],
         'sender_password': st.secrets["email"]["sender_password"],
+        'sender_name': 'Wilson Plant Co. HR',  # Display name
         'company_email': 'info@wilsonnurseriesky.com'
     }
 
@@ -175,13 +177,14 @@ def create_confirmation_email_body(data):
     location = data.get('location', '')
     address = data.get('address', '')
     
-    email_body = f"""{first_name}, thanks for applying & signing up for our job fair. We look forward to meeting you at {date}, {time}. 
+    email_body = f"""{first_name}, thanks for applying & signing up for our job fair. We look forward to meeting you {date}, {time}. 
 
 As a reminder, your interview will be at our {location} store which is at {address}. When you arrive, head straight in and sign in at the register.
 
 Thanks again for your interest & time,
 
 -Chris Taylor
+
 Wilson Plant Co. + Sage Garden Cafe
 """
     return email_body
@@ -202,7 +205,7 @@ def send_application_notification(data, pdf_buffer):
         
         # Create email message
         msg = MIMEMultipart()
-        msg["From"] = config['sender_email']
+        msg["From"] = formataddr((config['sender_name'], config['sender_email']))  # Shows "Wilson Plant Co. HR"
         msg["To"] = config['company_email']
         msg["Subject"] = f"Job Fair Application: {data.get('first_name', '')} {data.get('last_name', '')}"
         
@@ -245,9 +248,9 @@ def send_confirmation_email(data):
         
         # Create email message
         msg = MIMEMultipart()
-        msg["From"] = config['sender_email']
+        msg["From"] = formataddr((config['sender_name'], config['sender_email']))  # Shows "Wilson Plant Co. HR"
         msg["To"] = data.get('email', '')
-        msg["Subject"] = "Job Fair Interview Confirmation - Wilson Plant Co. + Sage Garden Cafe"
+        msg["Subject"] = "Job Fair Registration Confirmation"
         
         # Add email body
         email_body = create_confirmation_email_body(data)

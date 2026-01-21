@@ -44,6 +44,14 @@ def initialize_app():
         st.session_state.schedule_data = {}
     if 'application_data' not in st.session_state:
         st.session_state.application_data = {}
+    if 'submission_complete' not in st.session_state:
+        st.session_state.submission_complete = False
+    if 'pdf_buffer' not in st.session_state:
+        st.session_state.pdf_buffer = None
+    if 'pdf_filename' not in st.session_state:
+        st.session_state.pdf_filename = None
+    if 'full_data' not in st.session_state:
+        st.session_state.full_data = None
 
 def reset_app():
     """Reset all session state"""
@@ -129,69 +137,77 @@ def main():
         st.header("Application Submitted Successfully!")
         st.success("Thank you for applying to our job fair!")
         
-        # Process the application
-        try:
-            # Combine all data
-            full_data = {
-                **st.session_state.basic_info,
-                **st.session_state.schedule_data,
-                **st.session_state.application_data
-            }
-            
-            # Generate PDF
-            pdf_buffer = generate_application_pdf(full_data)
-            
-            # Upload PDF to Google Drive and get link
-            from application_sheets_manager import upload_pdf_to_drive
-            pdf_filename = f"Application_{full_data['last_name']}_{full_data['first_name']}.pdf"
-            pdf_link = upload_pdf_to_drive(pdf_buffer, pdf_filename) if pdf_buffer else ""
-            
-            # Add PDF link to data
-            full_data['pdf_link'] = pdf_link
-            
-            # Send to Google Sheets
-            sheet_success = send_application_to_sheet(full_data)
-            
-            # Send email notification to company
-            if pdf_buffer and sheet_success:
-                pdf_buffer.seek(0)  # Reset buffer
-                email_success = send_application_notification(full_data, pdf_buffer)
+        # Only process if not already submitted
+        if not st.session_state.submission_complete:
+            try:
+                # Combine all data
+                full_data = {
+                    **st.session_state.basic_info,
+                    **st.session_state.schedule_data,
+                    **st.session_state.application_data
+                }
                 
-                # Send confirmation email to applicant
-                pdf_buffer.seek(0)  # Reset buffer again
-                confirmation_success = send_confirmation_email(full_data)
+                # Generate PDF
+                pdf_buffer = generate_application_pdf(full_data)
                 
-                if email_success and confirmation_success:
-                    st.success("Your application has been submitted and you will receive a confirmation email shortly.")
-                else:
-                    st.warning("Application saved, but confirmation email could not be sent.")
-            
-            # Offer PDF download
-            if pdf_buffer:
-                pdf_buffer.seek(0)
-                st.download_button(
-                    label="📥 Download Your Application",
-                    data=pdf_buffer,
-                    file_name=pdf_filename,
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-            
-            # Show confirmation details
+                # Upload PDF to Google Drive and get link
+                from application_sheets_manager import upload_pdf_to_drive
+                pdf_filename = f"Application_{full_data['last_name']}_{full_data['first_name']}.pdf"
+                pdf_link = upload_pdf_to_drive(pdf_buffer, pdf_filename) if pdf_buffer else ""
+                
+                # Add PDF link to data
+                full_data['pdf_link'] = pdf_link
+                
+                # Send to Google Sheets (ONLY ONCE)
+                sheet_success = send_application_to_sheet(full_data)
+                
+                # Send email notifications (ONLY ONCE)
+                if pdf_buffer and sheet_success:
+                    pdf_buffer.seek(0)  # Reset buffer
+                    email_success = send_application_notification(full_data, pdf_buffer)
+                    
+                    # Send confirmation email to applicant
+                    pdf_buffer.seek(0)  # Reset buffer again
+                    confirmation_success = send_confirmation_email(full_data)
+                    
+                    if email_success and confirmation_success:
+                        st.success("Your application has been submitted and you will receive a confirmation email shortly.")
+                    else:
+                        st.warning("Application saved, but confirmation email could not be sent.")
+                
+                # Store data in session state for download
+                st.session_state.pdf_buffer = pdf_buffer
+                st.session_state.pdf_filename = pdf_filename
+                st.session_state.full_data = full_data
+                st.session_state.submission_complete = True
+                
+            except Exception as e:
+                st.error(f"An error occurred while processing your application: {e}")
+                st.write("Please contact us directly at info@wilsonnurseriesky.com")
+        
+        # Show download button (outside the submission block so it persists)
+        if st.session_state.pdf_buffer:
+            st.session_state.pdf_buffer.seek(0)
+            st.download_button(
+                label="📥 Download Your Application",
+                data=st.session_state.pdf_buffer,
+                file_name=st.session_state.pdf_filename,
+                mime="application/pdf",
+                use_container_width=True
+            )
+        
+        # Show confirmation details
+        if st.session_state.full_data:
             st.markdown("### Your Interview Details:")
-            st.write(f"**Location:** {full_data.get('location', 'N/A')}")
-            st.write(f"**Date:** {full_data.get('date', 'N/A')}")
-            st.write(f"**Time:** {full_data.get('time_slot', 'N/A')}")
-            
-            st.markdown("---")
-            
-            if st.button("Submit Another Application", use_container_width=True):
-                reset_app()
-                st.rerun()
-                
-        except Exception as e:
-            st.error(f"An error occurred while processing your application: {e}")
-            st.write("Please contact us directly at info@wilsonnurseriesky.com")
+            st.write(f"**Location:** {st.session_state.full_data.get('location', 'N/A')}")
+            st.write(f"**Date:** {st.session_state.full_data.get('date', 'N/A')}")
+            st.write(f"**Time:** {st.session_state.full_data.get('time_slot', 'N/A')}")
+        
+        st.markdown("---")
+        
+        if st.button("Submit Another Application", use_container_width=True):
+            reset_app()
+            st.rerun()
 
 if __name__ == "__main__":
     main()
