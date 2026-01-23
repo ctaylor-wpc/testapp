@@ -45,13 +45,14 @@ def _get_render_secret(key_path, default):
 def _get_streamlit_secret(key_path, default):
     """Get secret from Streamlit secrets.toml."""
     try:
+        # Import streamlit only when needed
         import streamlit as st
         keys = key_path.split(".")
         value = st.secrets
         for key in keys:
             value = value[key]
         return value
-    except (KeyError, AttributeError):
+    except (KeyError, AttributeError, ImportError):
         return default
 
 
@@ -72,7 +73,10 @@ def get_gcp_service_account():
     """Get GCP service account as dict."""
     sa = get_secret('gcp.service_account_json')
     if isinstance(sa, str):
-        return json.loads(sa)
+        try:
+            return json.loads(sa)
+        except json.JSONDecodeError:
+            return None
     return sa
 
 
