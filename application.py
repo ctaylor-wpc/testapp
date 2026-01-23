@@ -20,13 +20,12 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
     phone = st.text_input("Phone Number *", key="phone")
     alternate_phone = st.text_input("Alternate Phone Number (optional)", key="alternate_phone")
     
-    # Date of Birth - only if under 18
-    dob = st.date_input(
-        "Date of Birth (required if under 18) *",
-        min_value=datetime.date(1940, 1, 1),
-        max_value=datetime.date.today(),
-        value=None,
-        key="dob"
+    # Date of Birth - text input in MM/DD/YYYY format
+    dob = st.text_input(
+        "Date of Birth (MM/DD/YYYY - required if under 18) *",
+        key="dob",
+        placeholder="MM/DD/YYYY",
+        help="Enter your date of birth in MM/DD/YYYY format (e.g., 03/15/1995)"
     )
     
     street_address = st.text_input("Street Address *", key="street_address")
@@ -36,29 +35,97 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
     
     st.markdown("---")
     
-    # Position Information
+    # Position Information - IMPROVED with descriptions
     st.header("Position Information")
-    st.subheader("Preferred Position")
-    st.write("Select all positions you're interested in:")
+    st.subheader("Which positions interest you?")
+    st.write("Select all that apply. Hover over each position for details.")
     
     positions = {}
     
-    st.markdown("**Wilson Plant Co**")
-    positions['wpc_cashier'] = st.checkbox("Cashier", key="pos_wpc_cashier")
-    positions['wpc_greenhouse'] = st.checkbox("Greenhouse (annuals, perennials, & houseplants)", key="pos_wpc_greenhouse")
-    positions['wpc_nursery'] = st.checkbox("Nursery (trees & shrubs)", key="pos_wpc_nursery")
-    positions['wpc_waterer'] = st.checkbox("Waterer, Production (growing greenhouses)", key="pos_wpc_waterer")
-    positions['wpc_admin'] = st.checkbox("Administration (marketing, accounting, & hr)", key="pos_wpc_admin")
+    # Custom CSS for better checkbox styling
+    st.markdown("""
+    <style>
+    .position-section {
+        background-color: #f0f2f6;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    .position-header {
+        font-weight: bold;
+        font-size: 18px;
+        color: #1f77b4;
+        margin-bottom: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     
-    st.markdown("**Landscaping**")
-    positions['land_designer'] = st.checkbox("Designer", key="pos_land_designer")
-    positions['land_foreman'] = st.checkbox("Foreman", key="pos_land_foreman")
-    positions['land_installer'] = st.checkbox("Installer", key="pos_land_installer")
+    st.markdown('<div class="position-section">', unsafe_allow_html=True)
+    st.markdown('<div class="position-header">🌿 Wilson Plant Co.</div>', unsafe_allow_html=True)
+    positions['wpc_cashier'] = st.checkbox(
+        "Cashier", 
+        key="pos_wpc_cashier",
+        help="Process sales, assist customers, handle cash and card transactions"
+    )
+    positions['wpc_greenhouse'] = st.checkbox(
+        "Greenhouse Associate (Annuals, Perennials, & Houseplants)", 
+        key="pos_wpc_greenhouse",
+        help="Assist customers, maintain plant displays, water and care for greenhouse plants"
+    )
+    positions['wpc_nursery'] = st.checkbox(
+        "Nursery Associate (Trees & Shrubs)", 
+        key="pos_wpc_nursery",
+        help="Help customers select trees and shrubs, load materials, maintain outdoor displays"
+    )
+    positions['wpc_waterer'] = st.checkbox(
+        "Production/Waterer (Growing Greenhouses)", 
+        key="pos_wpc_waterer",
+        help="Water plants, transplant, maintain growing areas, assist with plant production"
+    )
+    positions['wpc_admin'] = st.checkbox(
+        "Administration (Marketing, Accounting, & HR)", 
+        key="pos_wpc_admin",
+        help="Office support, marketing tasks, bookkeeping, HR assistance"
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown("**Sage Garden Cafe**")
-    positions['cafe_foh'] = st.checkbox("Front-of-house (server, cashier, barista)", key="pos_cafe_foh")
-    positions['cafe_boh'] = st.checkbox("Back-of-house (cook, dishwasher)", key="pos_cafe_boh")
-    positions['cafe_admin'] = st.checkbox("Administration (management)", key="pos_cafe_admin")
+    st.markdown('<div class="position-section">', unsafe_allow_html=True)
+    st.markdown('<div class="position-header">🏡 Landscaping</div>', unsafe_allow_html=True)
+    positions['land_designer'] = st.checkbox(
+        "Designer", 
+        key="pos_land_designer",
+        help="Create landscape designs, meet with clients, develop planting plans"
+    )
+    positions['land_foreman'] = st.checkbox(
+        "Foreman", 
+        key="pos_land_foreman",
+        help="Lead installation crews, manage projects, coordinate schedules"
+    )
+    positions['land_installer'] = st.checkbox(
+        "Installer", 
+        key="pos_land_installer",
+        help="Plant installation, hardscape work, outdoor construction and maintenance"
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div class="position-section">', unsafe_allow_html=True)
+    st.markdown('<div class="position-header">☕ Sage Garden Cafe</div>', unsafe_allow_html=True)
+    positions['cafe_foh'] = st.checkbox(
+        "Front-of-House (Server, Cashier, Barista)", 
+        key="pos_cafe_foh",
+        help="Take orders, serve customers, prepare beverages, handle payments"
+    )
+    positions['cafe_boh'] = st.checkbox(
+        "Back-of-House (Cook, Dishwasher)", 
+        key="pos_cafe_boh",
+        help="Food preparation, cooking, dishwashing, kitchen maintenance"
+    )
+    positions['cafe_admin'] = st.checkbox(
+        "Management", 
+        key="pos_cafe_admin",
+        help="Supervise staff, manage operations, scheduling, inventory management"
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
     
     positions['other'] = st.checkbox("Something else", key="pos_other")
     if positions['other']:
@@ -66,17 +133,42 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
     
     st.markdown("---")
     
-    # Hours and pay
-    st.write("**How many hours are you looking for?**")
-    st.write("Select all that apply:")
-    hours_15_25 = st.checkbox("15-25 hours per week", key="hours_15_25")
-    hours_30_40 = st.checkbox("30-40 hours per week", key="hours_30_40")
-    hours_40_plus = st.checkbox("40+ hours per week", key="hours_40_plus")
+    # Hours - IMPROVED interface
+    st.subheader("Work Schedule Preference")
+    
+    # Primary choice: Part-time or Full-time
+    schedule_type = st.radio(
+        "What type of schedule are you looking for?",
+        ["Part-time (under 30 hours/week)", "Full-time (30+ hours/week)"],
+        key="schedule_type"
+    )
+    
+    # Then ask for specific hours
+    if "Part-time" in schedule_type:
+        hours_detail = st.selectbox(
+            "How many hours per week?",
+            ["15-20 hours", "20-25 hours", "25-30 hours", "Flexible/Open"],
+            key="hours_detail"
+        )
+    else:
+        hours_detail = st.selectbox(
+            "How many hours per week?",
+            ["30-35 hours", "35-40 hours", "40+ hours", "Flexible/Open"],
+            key="hours_detail"
+        )
+    
+    # Store in format compatible with existing code
+    hours_15_25 = "Part-time" in schedule_type and ("15-20" in hours_detail or "20-25" in hours_detail)
+    hours_30_40 = "Full-time" in schedule_type and ("30-35" in hours_detail or "35-40" in hours_detail)
+    hours_40_plus = "Full-time" in schedule_type and "40+" in hours_detail
+    
+    st.markdown("---")
     
     expected_payrate = st.text_input(
         "Based on your skills, education, and experience, what pay rate would you expect? *",
         key="expected_payrate",
-        help="Please provide a specific hourly rate or annual salary (e.g., '$15/hour' or '$30,000/year')"
+        placeholder="e.g., $15/hour or $35,000/year",
+        help="Please provide a specific hourly rate or annual salary"
     )
     
     # Validate payrate
@@ -97,13 +189,15 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
         "Are there any days or times you would NOT be available for work?",
         key="availability_restrictions",
         height=100,
-        help="For example: 'Not available Sundays' or 'Cannot work before 3pm on weekdays'"
+        placeholder="e.g., 'Not available Sundays' or 'Cannot work before 3pm on weekdays'",
+        help="Let us know any scheduling restrictions you have"
     )
     
     start_date = st.text_input(
         "If hired, when would you be available to start? *",
         key="start_date",
-        help="For example: 'Immediately', 'Two weeks notice required', or a specific date"
+        placeholder="e.g., 'Immediately', 'Two weeks notice required', or a specific date",
+        help="When can you begin working?"
     )
     
     st.markdown("---")
@@ -114,13 +208,15 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
     why_applying = st.text_area(
         "Briefly state why you are applying. *",
         key="why_applying",
-        height=100
+        height=100,
+        placeholder="What interests you about this position?"
     )
     
     special_training = st.text_area(
         "Do you have any special training, education, skills, or personal passions that are relevant?",
         key="special_training",
-        height=100
+        height=100,
+        placeholder="e.g., horticulture degree, food service certification, landscape design experience"
     )
     
     st.markdown("---")
@@ -192,7 +288,7 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
     
     st.markdown("---")
     
-    # Employment History
+    # Employment History - IMPROVED layout
     st.header("Employment History")
     st.info("This section is optional but recommended")
     
@@ -206,12 +302,23 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
         else:
             st.subheader(f"Employer {i + 1}")
         
-        employer = st.text_input("Employer:", key=f"employer_{i}")
+        employer = st.text_input("Employer Name:", key=f"employer_{i}")
         location = st.text_input("Location (City/State):", key=f"location_{i}")
-        hire_date = st.text_input("Hire Date (Month/Year):", key=f"hire_date_{i}")
-        end_date = st.text_input("End Date (Month/Year):", key=f"end_date_{i}")
-        position = st.text_input("Position:", key=f"position_{i}")
-        pay_rate = st.text_input("Pay Rate:", key=f"pay_rate_{i}")
+        
+        # Two columns for dates
+        col1, col2 = st.columns(2)
+        with col1:
+            hire_date = st.text_input("Hire Date (MM/YYYY):", key=f"hire_date_{i}", placeholder="MM/YYYY")
+        with col2:
+            end_date = st.text_input("End Date (MM/YYYY):", key=f"end_date_{i}", placeholder="MM/YYYY")
+        
+        # Two columns for position and pay
+        col1, col2 = st.columns(2)
+        with col1:
+            position = st.text_input("Position/Title:", key=f"position_{i}")
+        with col2:
+            pay_rate = st.text_input("Pay Rate:", key=f"pay_rate_{i}", placeholder="e.g., $15/hr")
+        
         reason = st.text_input("Reason for Leaving:", key=f"reason_{i}")
         
         employers.append({
@@ -238,7 +345,7 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
     college_name = st.text_input("College Name & City:", key="college_name")
     college_study = st.text_input("Area of Study:", key="college_study")
     college_graduated = st.radio("Graduated:", ["Yes", "No"], key="college_graduated", horizontal=True)
-    college_completion = st.text_input("Completion Date:", key="college_completion")
+    college_completion = st.text_input("Completion Date:", key="college_completion", placeholder="MM/YYYY")
     
     st.markdown("---")
     
@@ -246,7 +353,7 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
     hs_name = st.text_input("High School Name & City:", key="hs_name")
     hs_study = st.text_input("Area of Study:", key="hs_study")
     hs_graduated = st.radio("Graduated:", ["Yes", "No"], key="hs_graduated", horizontal=True)
-    hs_completion = st.text_input("Completion Date:", key="hs_completion")
+    hs_completion = st.text_input("Completion Date:", key="hs_completion", placeholder="MM/YYYY")
     
     st.markdown("---")
     
@@ -261,7 +368,7 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
         st.subheader(f"Reference {i + 1}")
         ref_name = st.text_input("Reference Name:", key=f"ref_name_{i}")
         ref_contact = st.text_input("Phone Number or Email Address:", key=f"ref_contact_{i}")
-        ref_relationship = st.text_input("Relationship:", key=f"ref_relationship_{i}")
+        ref_relationship = st.text_input("Relationship:", key=f"ref_relationship_{i}", placeholder="e.g., Former supervisor, colleague, professor")
         
         references.append({
             'name': ref_name,
@@ -281,7 +388,7 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
         # Validate required fields
         required_fields = [
             first_name, last_name, email, street_address, city, state, zip_code, phone,
-            expected_payrate, start_date, why_applying
+            expected_payrate, start_date, why_applying, dob
         ]
         
         if not all(required_fields):
@@ -312,8 +419,8 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
         # Get current timestamp
         submission_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Format DOB
-        dob_formatted = dob.strftime("%m/%d/%Y") if dob else ""
+        # Store schedule type and hours detail for better reporting
+        schedule_preference = f"{schedule_type} - {hours_detail}"
         
         # Compile all data
         application_data = {
@@ -323,7 +430,7 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
             'email': email,
             'phone': phone,
             'alternate_phone': alternate_phone,
-            'dob': dob_formatted,
+            'dob': dob,  # Already in MM/DD/YYYY format
             'street_address': street_address,
             'city': city,
             'state': state,
@@ -334,6 +441,7 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
             'hours_15_25': hours_15_25,
             'hours_30_40': hours_30_40,
             'hours_40_plus': hours_40_plus,
+            'schedule_preference': schedule_preference,  # NEW: Better description
             'expected_payrate': expected_payrate,
             
             # Availability

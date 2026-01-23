@@ -49,7 +49,7 @@ def format_positions(positions):
     cafe_positions = []
     if positions.get('cafe_foh'): cafe_positions.append("Front-of-house")
     if positions.get('cafe_boh'): cafe_positions.append("Back-of-house")
-    if positions.get('cafe_admin'): cafe_positions.append("Administration")
+    if positions.get('cafe_admin'): cafe_positions.append("Management")
     if cafe_positions:
         position_list.append("Sage Garden Cafe: " + ", ".join(cafe_positions))
     
@@ -59,14 +59,6 @@ def format_positions(positions):
         position_list.append(f"Other: {other_desc}")
     
     return " | ".join(position_list) if position_list else "Not specified"
-
-def format_hours(data):
-    """Format hours preference"""
-    hours = []
-    if data.get('hours_15_25'): hours.append("15-25")
-    if data.get('hours_30_40'): hours.append("30-40")
-    if data.get('hours_40_plus'): hours.append("40+")
-    return ", ".join(hours) if hours else "Not specified"
 
 def generate_application_pdf(data):
     """Generate a filled PDF from the application data"""
@@ -102,7 +94,7 @@ def generate_application_pdf(data):
             
             # Position info
             "positions": format_positions(data.get('positions', {})),
-            "hours": format_hours(data),
+            "schedule_preference": data.get('schedule_preference', ''),  # NEW: uses the full description
             "expected_payrate": data.get('expected_payrate', ''),
             
             # Availability
