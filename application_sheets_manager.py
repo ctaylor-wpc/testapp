@@ -6,7 +6,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
-from secrets import get_gcp_service_account, get_sheet_config
+from config_secrets import get_gcp_service_account, get_sheet_config
 
 # Configuration
 SCOPES = [
