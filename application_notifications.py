@@ -7,18 +7,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.utils import formataddr
+from secrets import get_email_config
 
-# Email configuration from secrets
-def get_email_config():
-    """Get email configuration from Streamlit secrets"""
-    return {
-        'smtp_server': st.secrets["email"]["smtp_server"],
-        'smtp_port': st.secrets["email"]["smtp_port"],
-        'sender_email': st.secrets["email"]["sender_email"],
-        'sender_password': st.secrets["email"]["sender_password"],
-        'sender_name': 'Wilson Plant Co. HR',  # Display name
-        'company_email': 'info@wilsonnurseriesky.com'
-    }
 
 def format_positions_email(positions):
     """Format positions for email display"""
@@ -57,6 +47,7 @@ def format_positions_email(positions):
     
     return "\n".join(position_list) if position_list else "Not specified"
 
+
 def format_hours_email(data):
     """Format hours preference for email"""
     hours = []
@@ -64,6 +55,7 @@ def format_hours_email(data):
     if data.get('hours_30_40'): hours.append("30-40")
     if data.get('hours_40_plus'): hours.append("40+")
     return ", ".join(hours) if hours else "Not specified"
+
 
 def format_employers_email(employers):
     """Format employment history for email"""
@@ -84,6 +76,7 @@ Employer {i+1}:
 """)
     return "\n".join(emp_text)
 
+
 def format_references_email(references):
     """Format references for email"""
     if not references or not any(ref.get('name') for ref in references):
@@ -100,6 +93,7 @@ Reference {i+1}:
 """)
     return "\n".join(ref_text)
 
+
 def create_company_email_body(data):
     """Create the email body text for company notification"""
     email_body = f"""
@@ -107,28 +101,28 @@ NEW JOB FAIR APPLICATION RECEIVED
 =====================================
 
 APPLICANT INFORMATION:
-Name: {data.get('first_name', '')} {data.get('last_name', '')}
-Email: {data.get('email', '')}
-Phone: {data.get('phone', '')}
-Alternate Phone: {data.get('alternate_phone', 'Not provided')}
-Date of Birth: {data.get('dob', 'Not provided')}
-Address: {data.get('street_address', '')}, {data.get('city', '')}, {data.get('state', '')} {data.get('zip', '')}
+  Name: {data.get('first_name', '')} {data.get('last_name', '')}
+  Email: {data.get('email', '')}
+  Phone: {data.get('phone', '')}
+  Alternate Phone: {data.get('alternate_phone', 'Not provided')}
+  Date of Birth: {data.get('dob', 'Not provided')}
+  Address: {data.get('street_address', '')}, {data.get('city', '')}, {data.get('state', '')} {data.get('zip', '')}
 
 INTERVIEW SCHEDULE:
-Location: {data.get('location', 'N/A')}
-Date: {data.get('date', 'N/A')}
-Time: {data.get('time_slot', 'N/A')}
+  Location: {data.get('location', 'N/A')}
+  Date: {data.get('date', 'N/A')}
+  Time: {data.get('time_slot', 'N/A')}
 
 POSITION INFORMATION:
-Positions Applied For:
+  Positions Applied For:
 {format_positions_email(data.get('positions', {}))}
 
-Hours Preferred: {format_hours_email(data)}
-Expected Payrate: {data.get('expected_payrate', 'Not specified')}
+  Hours Preferred: {format_hours_email(data)}
+  Expected Payrate: {data.get('expected_payrate', 'Not specified')}
 
 AVAILABILITY:
-Restrictions: {data.get('availability_restrictions', 'None')}
-Available to Start: {data.get('start_date', 'Not specified')}
+  Restrictions: {data.get('availability_restrictions', 'None')}
+  Available to Start: {data.get('start_date', 'Not specified')}
 
 WHY APPLYING:
 {data.get('why_applying', 'Not provided')}
@@ -137,23 +131,23 @@ SPECIAL TRAINING/SKILLS:
 {data.get('special_training', 'Not provided')}
 
 LEGAL INFORMATION:
-Legally entitled to work in U.S.: {data.get('legally_entitled', 'N/A')}
-Can perform physical duties: {data.get('perform_duties', 'N/A')}
-Willing to submit to drug test: {data.get('drug_test', 'N/A')}
-Willing to submit to background check: {data.get('background_check', 'N/A')}
-Valid driver's license: {data.get('drivers_license', 'N/A')}
-Reliable transportation: {data.get('reliable_transport', 'N/A')}
+  Legally entitled to work in U.S.: {data.get('legally_entitled', 'N/A')}
+  Can perform physical duties: {data.get('perform_duties', 'N/A')}
+  Willing to submit to drug test: {data.get('drug_test', 'N/A')}
+  Willing to submit to background check: {data.get('background_check', 'N/A')}
+  Valid driver's license: {data.get('drivers_license', 'N/A')}
+  Reliable transportation: {data.get('reliable_transport', 'N/A')}
 
 EMPLOYMENT HISTORY:
 {format_employers_email(data.get('employers', []))}
 
 EDUCATION:
-College: {data.get('college_name', 'N/A')}
+  College: {data.get('college_name', 'N/A')}
   Area of Study: {data.get('college_study', 'N/A')}
   Graduated: {data.get('college_graduated', 'N/A')}
   Completion Date: {data.get('college_completion', 'N/A')}
 
-High School: {data.get('hs_name', 'N/A')}
+  High School: {data.get('hs_name', 'N/A')}
   Area of Study: {data.get('hs_study', 'N/A')}
   Graduated: {data.get('hs_graduated', 'N/A')}
   Completion Date: {data.get('hs_completion', 'N/A')}
@@ -162,12 +156,13 @@ REFERENCES:
 {format_references_email(data.get('references', []))}
 
 SUBMISSION DETAILS:
-Submitted: {data.get('submission_timestamp', 'N/A')}
+  Submitted: {data.get('submission_timestamp', 'N/A')}
 
 =====================================
 Application PDF is attached.
 """
     return email_body
+
 
 def create_confirmation_email_body(data):
     """Create the confirmation email body for the applicant"""
@@ -177,7 +172,7 @@ def create_confirmation_email_body(data):
     location = data.get('location', '')
     address = data.get('address', '')
     
-    email_body = f"""{first_name}, thanks for applying & signing up for our job fair. We look forward to meeting you {date}, {time}. 
+    email_body = f"""{first_name}, thanks for applying & signing up for our job fair. We look forward to meeting you {date}, {time}.
 
 As a reminder, your interview will be at our {location} store which is at {address}. When you arrive, head straight in and sign in at the register.
 
@@ -188,6 +183,7 @@ Thanks again for your interest & time,
 Wilson Plant Co. + Sage Garden Cafe
 """
     return email_body
+
 
 def send_application_notification(data, pdf_buffer):
     """
@@ -202,6 +198,10 @@ def send_application_notification(data, pdf_buffer):
     """
     try:
         config = get_email_config()
+        
+        if not config or not all([config.get('smtp_server'), config.get('sender_email'), config.get('sender_password')]):
+            st.error("Email configuration is incomplete. Please check secrets.")
+            return False
         
         # Create email message
         msg = MIMEMultipart()
@@ -228,10 +228,11 @@ def send_application_notification(data, pdf_buffer):
             server.sendmail(config['sender_email'], config['company_email'], msg.as_string())
         
         return True
-        
+    
     except Exception as e:
         st.error(f"Failed to send notification email to company: {e}")
         return False
+
 
 def send_confirmation_email(data):
     """
@@ -245,6 +246,10 @@ def send_confirmation_email(data):
     """
     try:
         config = get_email_config()
+        
+        if not config or not all([config.get('smtp_server'), config.get('sender_email'), config.get('sender_password')]):
+            st.error("Email configuration is incomplete. Please check secrets.")
+            return False
         
         # Create email message
         msg = MIMEMultipart()
@@ -263,7 +268,7 @@ def send_confirmation_email(data):
             server.sendmail(config['sender_email'], data.get('email', ''), msg.as_string())
         
         return True
-        
+    
     except Exception as e:
         st.error(f"Failed to send confirmation email to applicant: {e}")
         return False

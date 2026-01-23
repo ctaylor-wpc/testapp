@@ -1,6 +1,7 @@
 # app.py
 # Main application file for Job Fair Registration
 
+import os
 import streamlit as st
 import datetime
 from application import render_application_form
@@ -14,22 +15,22 @@ st.set_page_config(page_title="Wilson Plant Co. + Sage Garden Cafe Job Fair", la
 # Custom CSS for mobile-friendly layout
 st.markdown("""
 <style>
-    /* Force single column layout */
-    .stTextInput, .stTextArea, .stSelectbox, .stRadio, .stCheckbox {
-        margin-bottom: 1rem;
-    }
-    
-    /* Improve form field styling */
-    .stTextInput > div > div > input,
-    .stTextArea > div > div > textarea {
-        font-size: 16px !important;
-    }
-    
-    /* Make headers more consistent */
-    h1, h2, h3 {
-        margin-top: 1.5rem;
-        margin-bottom: 1rem;
-    }
+/* Force single column layout */
+.stTextInput, .stTextArea, .stSelectbox, .stRadio, .stCheckbox {
+    margin-bottom: 1rem;
+}
+
+/* Improve form field styling */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea {
+    font-size: 16px !important;
+}
+
+/* Make headers more consistent */
+h1, h2, h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -66,8 +67,8 @@ def main():
     st.title("Wilson Plant Co. + Sage Garden Cafe Job Fair")
     
     st.markdown("""
-    Apply to begin a challenging and rewarding career path in the horticulture, retail, and hospitality industries. 
-    Interview for a full or part-time, seasonal or year-round position with Wilson Plant Co, Sage Garden Café, 
+    Apply to begin a challenging and rewarding career path in the horticulture, retail, and hospitality industries.
+    Interview for a full or part-time, seasonal or year-round position with Wilson Plant Co, Sage Garden Café,
     or our landscaping & production teams.
     """)
     
@@ -87,9 +88,9 @@ def main():
         # Scheduling section
         st.header("Schedule Your Job Fair Interview")
         st.markdown("""
-        The job fair is an opportunity for you to meet with several members of our team all on one day in one trip. 
-        We provide multiple days and interview at both locations so please choose whatever day & location is most 
-        convenient for you. Please note, while we do our best to stick to the schedule, some of our best candidates 
+        The job fair is an opportunity for you to meet with several members of our team all on one day in one trip.
+        We provide multiple days and interview at both locations so please choose whatever day & location is most
+        convenient for you. Please note, while we do our best to stick to the schedule, some of our best candidates
         have found themselves here for around two hours.
         """)
         
@@ -180,7 +181,7 @@ def main():
                 st.session_state.pdf_filename = pdf_filename
                 st.session_state.full_data = full_data
                 st.session_state.submission_complete = True
-                
+            
             except Exception as e:
                 st.error(f"An error occurred while processing your application: {e}")
                 st.write("Please contact us directly at info@wilsonnurseriesky.com")
@@ -189,7 +190,7 @@ def main():
         if st.session_state.pdf_buffer:
             st.session_state.pdf_buffer.seek(0)
             st.download_button(
-                label="📥 Download Your Application",
+                label="📄 Download Your Application",
                 data=st.session_state.pdf_buffer,
                 file_name=st.session_state.pdf_filename,
                 mime="application/pdf",

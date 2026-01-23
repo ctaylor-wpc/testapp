@@ -2,6 +2,7 @@
 # PDF generation for job fair applications
 
 import io
+import os
 import base64
 from pdfrw import PdfObject, PdfName, PdfReader, PdfWriter
 import fitz
@@ -64,6 +65,13 @@ def generate_application_pdf(data):
     """Generate a filled PDF from the application data"""
     try:
         template_path = "application_template.pdf"
+        
+        # Check if template exists
+        if not os.path.exists(template_path):
+            print(f"ERROR: PDF template not found at {template_path}")
+            print("Please ensure 'application_template.pdf' exists in the project directory.")
+            return None
+        
         filled_path = "/tmp/filled_application.pdf"
         output_buffer = io.BytesIO()
         
@@ -219,7 +227,7 @@ def generate_application_pdf(data):
                     if rect and rect.is_valid and not rect.is_empty:
                         page.insert_image(rect, stream=sig_buffer.getvalue(), keep_proportion=True)
                         signature_placed = True
-                        
+            
             except Exception as e:
                 print(f"Could not add signature to PDF: {e}")
         
@@ -235,7 +243,7 @@ def generate_application_pdf(data):
         output_buffer.seek(0)
         
         return output_buffer
-        
+    
     except Exception as e:
         print(f"Error generating PDF: {e}")
         return None

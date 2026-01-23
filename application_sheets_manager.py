@@ -6,25 +6,28 @@ import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
-import json
+from secrets import get_gcp_service_account, get_sheet_config
 
 # Configuration
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
-SHEET_ID = "1QZ5gO5farg4E03dhaSINJljvn6qfocUgvHH4tjOSkIc"
-WORKSHEET_NAME = "2026"
-PDF_FOLDER_ID = "1X5crtAwvuIgmgrGOSUR9M1gq21e0oUwh"  # Shared Drive folder
+
+# Get config from centralized secrets
+_sheet_config = get_sheet_config()
+SHEET_ID = _sheet_config['sheet_id']
+WORKSHEET_NAME = _sheet_config['worksheet_name']
+PDF_FOLDER_ID = _sheet_config['pdf_folder_id']
+
 
 def get_service_account_info_from_secrets():
-    """Get service account info from Streamlit secrets"""
-    sa = st.secrets.get("gcp", {}).get("service_account_json")
+    """Get service account info from centralized secrets"""
+    sa = get_gcp_service_account()
     if not sa:
-        raise KeyError("Service account JSON not found: check st.secrets['gcp']['service_account_json']")
-    if isinstance(sa, str):
-        return json.loads(sa)
+        raise KeyError("Service account JSON not found in secrets")
     return sa
+
 
 def get_gspread_client():
     """Create and return authenticated gspread client"""
@@ -32,12 +35,14 @@ def get_gspread_client():
     creds = Credentials.from_service_account_info(sa_info, scopes=SCOPES)
     return gspread.authorize(creds)
 
+
 def get_drive_service():
     """Create and return Google Drive service"""
     sa_info = get_service_account_info_from_secrets()
     creds = Credentials.from_service_account_info(sa_info, scopes=SCOPES)
     service = build("drive", "v3", credentials=creds)
     return service
+
 
 def upload_pdf_to_drive(pdf_buffer, filename):
     """
@@ -70,10 +75,11 @@ def upload_pdf_to_drive(pdf_buffer, filename):
         
         file_id = uploaded_file.get("id")
         return f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
-        
+    
     except Exception as e:
         st.error(f"Failed to upload PDF to Google Drive: {e}")
         return ""
+
 
 def format_positions_for_sheet(positions):
     """Format positions dictionary for sheet"""
@@ -96,6 +102,7 @@ def format_positions_for_sheet(positions):
     
     return ", ".join(position_list)
 
+
 def format_hours_for_sheet(data):
     """Format hours preference for sheet"""
     hours = []
@@ -103,6 +110,7 @@ def format_hours_for_sheet(data):
     if data.get('hours_30_40'): hours.append("30-40")
     if data.get('hours_40_plus'): hours.append("40+")
     return ", ".join(hours)
+
 
 def send_application_to_sheet(data):
     """
@@ -276,7 +284,7 @@ def send_application_to_sheet(data):
         worksheet.append_row(row_data, value_input_option='USER_ENTERED')
         
         return True
-        
+    
     except Exception as e:
         st.error(f"Failed to send to Google Sheet: {e}")
         return False
