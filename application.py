@@ -35,33 +35,14 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
     
     st.markdown("---")
     
-    # Position Information - IMPROVED with descriptions
+    # Position Information
     st.header("Position Information")
     st.subheader("Which positions interest you?")
     st.write("Select all that apply. Hover over each position for details.")
     
     positions = {}
     
-    # Custom CSS for better checkbox styling
-    st.markdown("""
-    <style>
-    .position-section {
-        background-color: #f0f2f6;
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 15px;
-    }
-    .position-header {
-        font-weight: bold;
-        font-size: 18px;
-        color: #1f77b4;
-        margin-bottom: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    st.markdown('<div class="position-section">', unsafe_allow_html=True)
-    st.markdown('<div class="position-header">🌿 Wilson Plant Co.</div>', unsafe_allow_html=True)
+    st.markdown("**🌿 Wilson Plant Co.**")
     positions['wpc_cashier'] = st.checkbox(
         "Cashier", 
         key="pos_wpc_cashier",
@@ -87,10 +68,8 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
         key="pos_wpc_admin",
         help="Office support, marketing tasks, bookkeeping, HR assistance"
     )
-    st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="position-section">', unsafe_allow_html=True)
-    st.markdown('<div class="position-header">🏡 Landscaping</div>', unsafe_allow_html=True)
+    st.markdown("**🏡 Landscaping**")
     positions['land_designer'] = st.checkbox(
         "Designer", 
         key="pos_land_designer",
@@ -106,10 +85,8 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
         key="pos_land_installer",
         help="Plant installation, hardscape work, outdoor construction and maintenance"
     )
-    st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="position-section">', unsafe_allow_html=True)
-    st.markdown('<div class="position-header">☕ Sage Garden Cafe</div>', unsafe_allow_html=True)
+    st.markdown("**☕ Sage Garden Cafe**")
     positions['cafe_foh'] = st.checkbox(
         "Front-of-House (Server, Cashier, Barista)", 
         key="pos_cafe_foh",
@@ -125,7 +102,6 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
         key="pos_cafe_admin",
         help="Supervise staff, manage operations, scheduling, inventory management"
     )
-    st.markdown('</div>', unsafe_allow_html=True)
     
     positions['other'] = st.checkbox("Something else", key="pos_other")
     if positions['other']:
@@ -430,7 +406,7 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
             'email': email,
             'phone': phone,
             'alternate_phone': alternate_phone,
-            'dob': dob,  # Already in MM/DD/YYYY format
+            'dob': dob,
             'street_address': street_address,
             'city': city,
             'state': state,
@@ -441,7 +417,7 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
             'hours_15_25': hours_15_25,
             'hours_30_40': hours_30_40,
             'hours_40_plus': hours_40_plus,
-            'schedule_preference': schedule_preference,  # NEW: Better description
+            'schedule_preference': schedule_preference,
             'expected_payrate': expected_payrate,
             
             # Availability
