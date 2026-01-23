@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.utils import formataddr
-from secrets import get_email_config
+from config_secrets import get_email_config
 
 
 def format_positions_email(positions):
