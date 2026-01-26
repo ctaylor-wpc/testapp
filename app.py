@@ -4,11 +4,6 @@
 import os
 import streamlit as st
 import datetime
-from application import render_application_form
-from application_scheduling import render_scheduling_section, get_schedule_data
-from application_sheets_manager import send_application_to_sheet
-from application_pdf_generator import generate_application_pdf
-from application_notifications import send_application_notification, send_confirmation_email
 
 st.set_page_config(page_title="Wilson Plant Co. + Sage Garden Cafe Job Fair", layout="centered")
 
@@ -76,6 +71,9 @@ def main():
     
     # Phase 1: Basic Info and Scheduling
     if st.session_state.phase == 1:
+        # Lazy import - only load when needed
+        from application_scheduling import render_scheduling_section
+        
         st.header("Register for the Job Fair")
         
         # Basic contact information - mobile-friendly single column
@@ -113,6 +111,9 @@ def main():
     
     # Phase 2: Application for Employment
     elif st.session_state.phase == 2:
+        # Lazy import - only load when needed
+        from application import render_application_form
+        
         st.header("Application for Employment")
         
         if st.button("← Back to Registration"):
@@ -140,51 +141,57 @@ def main():
         
         # Only process if not already submitted
         if not st.session_state.submission_complete:
-            try:
-                # Combine all data
-                full_data = {
-                    **st.session_state.basic_info,
-                    **st.session_state.schedule_data,
-                    **st.session_state.application_data
-                }
-                
-                # Generate PDF
-                pdf_buffer = generate_application_pdf(full_data)
-                
-                # Upload PDF to Google Drive and get link
-                from application_sheets_manager import upload_pdf_to_drive
-                pdf_filename = f"Application_{full_data['last_name']}_{full_data['first_name']}.pdf"
-                pdf_link = upload_pdf_to_drive(pdf_buffer, pdf_filename) if pdf_buffer else ""
-                
-                # Add PDF link to data
-                full_data['pdf_link'] = pdf_link
-                
-                # Send to Google Sheets (ONLY ONCE)
-                sheet_success = send_application_to_sheet(full_data)
-                
-                # Send email notifications (ONLY ONCE)
-                if pdf_buffer and sheet_success:
-                    pdf_buffer.seek(0)  # Reset buffer
-                    email_success = send_application_notification(full_data, pdf_buffer)
-                    
-                    # Send confirmation email to applicant
-                    pdf_buffer.seek(0)  # Reset buffer again
-                    confirmation_success = send_confirmation_email(full_data)
-                    
-                    if email_success and confirmation_success:
-                        st.success("Your application has been submitted and you will receive a confirmation email shortly.")
-                    else:
-                        st.warning("Application saved, but confirmation email could not be sent.")
-                
-                # Store data in session state for download
-                st.session_state.pdf_buffer = pdf_buffer
-                st.session_state.pdf_filename = pdf_filename
-                st.session_state.full_data = full_data
-                st.session_state.submission_complete = True
+            # Lazy imports - only load heavy libraries when actually submitting
+            from application_sheets_manager import send_application_to_sheet, upload_pdf_to_drive
+            from application_pdf_generator import generate_application_pdf
+            from application_notifications import send_application_notification, send_confirmation_email
             
-            except Exception as e:
-                st.error(f"An error occurred while processing your application: {e}")
-                st.write("Please contact us directly at info@wilsonnurseriesky.com")
+            # Show progress indicator
+            with st.spinner("Processing your application..."):
+                try:
+                    # Combine all data
+                    full_data = {
+                        **st.session_state.basic_info,
+                        **st.session_state.schedule_data,
+                        **st.session_state.application_data
+                    }
+                    
+                    # Generate PDF
+                    pdf_buffer = generate_application_pdf(full_data)
+                    
+                    # Upload PDF to Google Drive and get link
+                    pdf_filename = f"Application_{full_data['last_name']}_{full_data['first_name']}.pdf"
+                    pdf_link = upload_pdf_to_drive(pdf_buffer, pdf_filename) if pdf_buffer else ""
+                    
+                    # Add PDF link to data
+                    full_data['pdf_link'] = pdf_link
+                    
+                    # Send to Google Sheets (ONLY ONCE)
+                    sheet_success = send_application_to_sheet(full_data)
+                    
+                    # Send email notifications (ONLY ONCE)
+                    if pdf_buffer and sheet_success:
+                        pdf_buffer.seek(0)  # Reset buffer
+                        email_success = send_application_notification(full_data, pdf_buffer)
+                        
+                        # Send confirmation email to applicant
+                        pdf_buffer.seek(0)  # Reset buffer again
+                        confirmation_success = send_confirmation_email(full_data)
+                        
+                        if email_success and confirmation_success:
+                            st.success("Your application has been submitted and you will receive a confirmation email shortly.")
+                        else:
+                            st.warning("Application saved, but confirmation email could not be sent.")
+                    
+                    # Store data in session state for download
+                    st.session_state.pdf_buffer = pdf_buffer
+                    st.session_state.pdf_filename = pdf_filename
+                    st.session_state.full_data = full_data
+                    st.session_state.submission_complete = True
+                    
+                except Exception as e:
+                    st.error(f"An error occurred while processing your application: {e}")
+                    st.write("Please contact us directly at info@wilsonnurseriesky.com")
         
         # Show download button (outside the submission block so it persists)
         if st.session_state.pdf_buffer:

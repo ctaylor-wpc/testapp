@@ -2,17 +2,7 @@
 # Google Sheets integration for job fair applications
 
 import streamlit as st
-import gspread
-from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
 from config_secrets import get_gcp_service_account, get_sheet_config
-
-# Configuration
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
 
 # Get config from centralized secrets
 _sheet_config = get_sheet_config()
@@ -20,25 +10,39 @@ SHEET_ID = _sheet_config['sheet_id']
 WORKSHEET_NAME = _sheet_config['worksheet_name']
 PDF_FOLDER_ID = _sheet_config['pdf_folder_id']
 
-
-def get_service_account_info_from_secrets():
-    """Get service account info from centralized secrets"""
-    sa = get_gcp_service_account()
-    if not sa:
-        raise KeyError("Service account JSON not found in secrets")
-    return sa
+# Configuration
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 
 
+@st.cache_resource
 def get_gspread_client():
-    """Create and return authenticated gspread client"""
-    sa_info = get_service_account_info_from_secrets()
+    """Create and return authenticated gspread client. Cached for performance."""
+    # Lazy import - only load when needed
+    import gspread
+    from google.oauth2.service_account import Credentials
+    
+    sa_info = get_gcp_service_account()
+    if not sa_info:
+        raise KeyError("Service account JSON not found in secrets")
+    
     creds = Credentials.from_service_account_info(sa_info, scopes=SCOPES)
     return gspread.authorize(creds)
 
 
+@st.cache_resource
 def get_drive_service():
-    """Create and return Google Drive service"""
-    sa_info = get_service_account_info_from_secrets()
+    """Create and return Google Drive service. Cached for performance."""
+    # Lazy import - only load when needed
+    from google.oauth2.service_account import Credentials
+    from googleapiclient.discovery import build
+    
+    sa_info = get_gcp_service_account()
+    if not sa_info:
+        raise KeyError("Service account JSON not found in secrets")
+    
     creds = Credentials.from_service_account_info(sa_info, scopes=SCOPES)
     service = build("drive", "v3", credentials=creds)
     return service
@@ -56,6 +60,9 @@ def upload_pdf_to_drive(pdf_buffer, filename):
         str: URL to the uploaded file, or empty string if failed
     """
     try:
+        # Lazy import
+        from googleapiclient.http import MediaIoBaseUpload
+        
         service = get_drive_service()
         
         file_metadata = {
@@ -75,7 +82,7 @@ def upload_pdf_to_drive(pdf_buffer, filename):
         
         file_id = uploaded_file.get("id")
         return f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
-    
+        
     except Exception as e:
         st.error(f"Failed to upload PDF to Google Drive: {e}")
         return ""
@@ -115,74 +122,6 @@ def format_hours_for_sheet(data):
 def send_application_to_sheet(data):
     """
     Send application data to Google Sheet
-    
-    IMPORTANT: Your Google Sheet needs these 65 columns (A-BM):
-    1. First Name
-    2. Last Name
-    3. Email
-    4. Phone
-    5. Alternate Phone
-    6. Date of Birth
-    7. Street Address
-    8. City
-    9. State
-    10. Zip
-    11. Interview Location
-    12. Interview Date
-    13. Interview Time
-    14. Positions Applied For
-    15. Hours Preferred
-    16. Expected Payrate
-    17. Availability Restrictions
-    18. Available to Start
-    19. Why Applying
-    20. Special Training/Skills
-    21. Legally Entitled to Work
-    22. Can Perform Physical Duties
-    23. Drug Test Willing
-    24. Background Check Willing
-    25. Valid Drivers License
-    26. Reliable Transportation
-    27. Submission Timestamp
-    28. Employer 1 Name
-    29. Employer 1 Location
-    30. Employer 1 Hire Date
-    31. Employer 1 End Date
-    32. Employer 1 Position
-    33. Employer 1 Pay Rate
-    34. Employer 1 Reason for Leaving
-    35. Employer 2 Name
-    36. Employer 2 Location
-    37. Employer 2 Hire Date
-    38. Employer 2 End Date
-    39. Employer 2 Position
-    40. Employer 2 Pay Rate
-    41. Employer 2 Reason for Leaving
-    42. Employer 3 Name
-    43. Employer 3 Location
-    44. Employer 3 Hire Date
-    45. Employer 3 End Date
-    46. Employer 3 Position
-    47. Employer 3 Pay Rate
-    48. Employer 3 Reason for Leaving
-    49. College Name & City
-    50. College Area of Study
-    51. College Graduated
-    52. College Completion Date
-    53. High School Name & City
-    54. High School Area of Study
-    55. High School Graduated
-    56. High School Completion Date
-    57. Reference 1 Name
-    58. Reference 1 Contact
-    59. Reference 1 Relationship
-    60. Reference 2 Name
-    61. Reference 2 Contact
-    62. Reference 2 Relationship
-    63. Reference 3 Name
-    64. Reference 3 Contact
-    65. Reference 3 Relationship
-    66. PDF Link
     """
     try:
         client = get_gspread_client()
@@ -284,7 +223,7 @@ def send_application_to_sheet(data):
         worksheet.append_row(row_data, value_input_option='USER_ENTERED')
         
         return True
-    
+        
     except Exception as e:
         st.error(f"Failed to send to Google Sheet: {e}")
         return False
