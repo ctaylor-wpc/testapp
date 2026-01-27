@@ -3,6 +3,7 @@
 
 import streamlit as st
 import smtplib
+import traceback
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
@@ -196,16 +197,24 @@ def send_application_notification(data, pdf_buffer):
     Returns:
         bool: True if email sent successfully, False otherwise
     """
+    print(">>> Entering send_application_notification()")
+    print(f">>> Recipient: {data.get('first_name')} {data.get('last_name')}")
+    
     try:
         config = get_email_config()
         
         if not config or not all([config.get('smtp_server'), config.get('sender_email'), config.get('sender_password')]):
+            print(">>> ERROR: Email configuration is incomplete")
             st.error("Email configuration is incomplete. Please check secrets.")
             return False
         
+        print(f">>> SMTP Server: {config.get('smtp_server')}")
+        print(f">>> Sender: {config.get('sender_email')}")
+        print(f">>> Company Email: {config.get('company_email')}")
+        
         # Create email message
         msg = MIMEMultipart()
-        msg["From"] = formataddr((config['sender_name'], config['sender_email']))  # Shows "Wilson Plant Co. HR"
+        msg["From"] = formataddr((config['sender_name'], config['sender_email']))
         msg["To"] = config['company_email']
         msg["Subject"] = f"Job Fair Application: {data.get('first_name', '')} {data.get('last_name', '')}"
         
@@ -215,21 +224,31 @@ def send_application_notification(data, pdf_buffer):
         
         # Add PDF attachment
         if pdf_buffer:
+            print(">>> Attaching PDF to email")
             pdf_buffer.seek(0)
             pdf_filename = f"Application_{data.get('last_name', '')}_{data.get('first_name', '')}.pdf"
             part = MIMEApplication(pdf_buffer.read(), Name=pdf_filename)
             part['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
             msg.attach(part)
+        else:
+            print(">>> No PDF to attach")
         
         # Send email
+        print(">>> Connecting to SMTP server...")
         with smtplib.SMTP(config['smtp_server'], config['smtp_port']) as server:
+            print(">>> Starting TLS...")
             server.starttls()
+            print(">>> Logging in...")
             server.login(config['sender_email'], config['sender_password'])
+            print(">>> Sending email...")
             server.sendmail(config['sender_email'], config['company_email'], msg.as_string())
         
+        print(">>> Company notification email sent successfully")
         return True
     
     except Exception as e:
+        print(f">>> ERROR: Failed to send notification email to company: {e}")
+        print(traceback.format_exc())
         st.error(f"Failed to send notification email to company: {e}")
         return False
 
@@ -244,16 +263,20 @@ def send_confirmation_email(data):
     Returns:
         bool: True if email sent successfully, False otherwise
     """
+    print(">>> Entering send_confirmation_email()")
+    print(f">>> Recipient: {data.get('email')}")
+    
     try:
         config = get_email_config()
         
         if not config or not all([config.get('smtp_server'), config.get('sender_email'), config.get('sender_password')]):
+            print(">>> ERROR: Email configuration is incomplete")
             st.error("Email configuration is incomplete. Please check secrets.")
             return False
         
         # Create email message
         msg = MIMEMultipart()
-        msg["From"] = formataddr((config['sender_name'], config['sender_email']))  # Shows "Wilson Plant Co. HR"
+        msg["From"] = formataddr((config['sender_name'], config['sender_email']))
         msg["To"] = data.get('email', '')
         msg["Subject"] = "Job Fair Registration Confirmation"
         
@@ -262,13 +285,20 @@ def send_confirmation_email(data):
         msg.attach(MIMEText(email_body, "plain"))
         
         # Send email
+        print(">>> Connecting to SMTP server...")
         with smtplib.SMTP(config['smtp_server'], config['smtp_port']) as server:
+            print(">>> Starting TLS...")
             server.starttls()
+            print(">>> Logging in...")
             server.login(config['sender_email'], config['sender_password'])
+            print(">>> Sending email...")
             server.sendmail(config['sender_email'], data.get('email', ''), msg.as_string())
         
+        print(">>> Confirmation email sent successfully")
         return True
     
     except Exception as e:
+        print(f">>> ERROR: Failed to send confirmation email to applicant: {e}")
+        print(traceback.format_exc())
         st.error(f"Failed to send confirmation email to applicant: {e}")
         return False

@@ -4,12 +4,15 @@
 import io
 import os
 import base64
+import traceback
 
 def sanitize_for_pdf(value):
     """Clean value for PDF field insertion"""
     if not isinstance(value, str):
         value = str(value)
-    return (
+    
+    # Remove or replace problematic characters
+    value = (
         value.replace("(", "[")
         .replace(")", "]")
         .replace("&", "and")
@@ -18,8 +21,20 @@ def sanitize_for_pdf(value):
         .replace(":", "-")
         .replace("\"", "'")
         .replace("\\", "/")
+        .replace("'", "'")  # Replace smart quotes
+        .replace("'", "'")
+        .replace(""", '"')
+        .replace(""", '"')
+        .replace("—", "-")  # Em dash
+        .replace("–", "-")  # En dash
         .strip()
     )
+    
+    # Limit length to prevent overflow
+    if len(value) > 500:
+        value = value[:497] + "..."
+    
+    return value
 
 def format_positions(positions):
     """Format positions dictionary into readable string"""
@@ -60,19 +75,26 @@ def format_positions(positions):
 
 def generate_application_pdf(data):
     """Generate a filled PDF from the application data"""
+    print(">>> Entering generate_application_pdf()")
+    print(f">>> Applicant: {data.get('first_name')} {data.get('last_name')}")
+    
     try:
         # Import here to avoid issues if libraries aren't available
+        print(">>> Importing PDF libraries...")
         from pdfrw import PdfObject, PdfName, PdfReader, PdfWriter
         import fitz
         from PIL import Image
+        print(">>> PDF libraries imported successfully")
         
         template_path = "application_template.pdf"
         
         # Check if template exists
         if not os.path.exists(template_path):
-            print(f"WARNING: PDF template not found at {template_path}")
-            print("PDF generation skipped. Application will still be saved to Google Sheets.")
+            print(f">>> ERROR: PDF template not found at {template_path}")
+            print(">>> PDF generation skipped. Application will still be saved to Google Sheets.")
             return None
+        
+        print(f">>> PDF template found at {template_path}")
         
         filled_path = "/tmp/filled_application.pdf"
         output_buffer = io.BytesIO()
@@ -83,6 +105,7 @@ def generate_application_pdf(data):
         SUBTYPE_KEY = "/Subtype"
         WIDGET_SUBTYPE_KEY = "/Widget"
         
+        print(">>> Preparing PDF data...")
         # Prepare data for PDF fields
         pdf_data = {
             # Basic info
@@ -171,9 +194,12 @@ def generate_application_pdf(data):
                 pdf_data[f"reference{ref_num}_contact"] = ''
                 pdf_data[f"reference{ref_num}_relationship"] = ''
         
+        print(">>> Reading PDF template...")
         # Read template and fill fields
         template_pdf = PdfReader(template_path)
         
+        print(">>> Filling PDF fields...")
+        field_count = 0
         for page in template_pdf.pages:
             annotations = page.get(ANNOT_KEY)
             if annotations:
@@ -185,9 +211,14 @@ def generate_application_pdf(data):
                             if key_name in pdf_data:
                                 value = sanitize_for_pdf(pdf_data[key_name])
                                 annotation[PdfName("V")] = PdfObject(f"({value})")
+                                field_count += 1
         
+        print(f">>> Filled {field_count} PDF fields")
+        
+        print(">>> Writing filled PDF...")
         PdfWriter(filled_path, trailer=template_pdf).write()
         
+        print(">>> Flattening PDF with fitz...")
         # Flatten and add signature
         doc = fitz.open(filled_path)
         
@@ -196,6 +227,7 @@ def generate_application_pdf(data):
         signature_placed = False
         
         if signature_base64:
+            print(">>> Adding signature to PDF...")
             try:
                 sig_bytes = base64.b64decode(signature_base64)
                 sig_img = Image.open(io.BytesIO(sig_bytes))
@@ -230,9 +262,13 @@ def generate_application_pdf(data):
                         page.insert_image(rect, stream=sig_buffer.getvalue(), keep_proportion=True)
                         signature_placed = True
                 
+                print(f">>> Signature placed: {signature_placed}")
+                
             except Exception as e:
-                print(f"Could not add signature to PDF: {e}")
+                print(f">>> Could not add signature to PDF: {e}")
+                print(traceback.format_exc())
         
+        print(">>> Making all fields read-only...")
         # Make all fields read-only
         for page in doc:
             widgets = page.widgets()
@@ -241,15 +277,19 @@ def generate_application_pdf(data):
                     widget.update()
                     widget.field_flags |= 1 << 0  # Set ReadOnly
         
+        print(">>> Saving final PDF to buffer...")
         doc.save(output_buffer, deflate=True)
         output_buffer.seek(0)
         
+        print(">>> PDF generated successfully!")
         return output_buffer
         
     except ImportError as e:
-        print(f"Required PDF libraries not available: {e}")
-        print("Application will be saved to Google Sheets without PDF generation.")
+        print(f">>> ERROR: Required PDF libraries not available: {e}")
+        print(traceback.format_exc())
+        print(">>> Application will be saved to Google Sheets without PDF generation.")
         return None
     except Exception as e:
-        print(f"Error generating PDF: {e}")
+        print(f">>> ERROR generating PDF: {e}")
+        print(traceback.format_exc())
         return None
