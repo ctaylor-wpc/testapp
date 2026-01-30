@@ -1,6 +1,6 @@
 # app.py
 # Main application file for Job Fair Registration
-# FIXED: Progress shown at button location, no scrolling needed
+# FIXED: Submit button immediately transitions to clean processing view
 
 import os
 import streamlit as st
@@ -16,7 +16,7 @@ try:
         st.set_page_config(page_title="Under Maintenance", layout="centered")
         st.title("Wilson Plant Co. + Sage Garden Cafe")
         st.warning(MAINTENANCE_MESSAGE)
-        st.info("💡 **Tip:** Refresh this page in a few minutes to try again.")
+        st.info("Refresh this page in a few minutes to try again.")
         st.stop()
 except ImportError:
     pass
@@ -36,14 +36,6 @@ st.markdown("""
 h1, h2, h3 {
     margin-top: 1.5rem;
     margin-bottom: 1rem;
-}
-/* Highlight processing container */
-.processing-box {
-    border: 2px solid #1f77b4;
-    border-radius: 8px;
-    padding: 20px;
-    background-color: #f0f8ff;
-    margin: 20px 0;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -99,7 +91,7 @@ def main():
     check_render_loop()
     initialize_app()
     
-    # TERMINAL STATE - Show completion page
+    # PHASE 4: TERMINAL STATE - Completion page
     if st.session_state.get('submitted'):
         sub_id = st.session_state.submission_id
         print(f"TERMINAL STATE: ID {sub_id}")
@@ -149,13 +141,13 @@ def main():
     
     # PHASE 1: Registration
     if st.session_state.phase == 1:
-        print(f"PHASE 1: Registration")
+        print("PHASE 1: Registration")
         from application_scheduling import render_scheduling_section
         
         st.title("Wilson Plant Co. + Sage Garden Cafe Job Fair")
         st.markdown("""
         Apply to begin a challenging and rewarding career path in the horticulture, retail, and hospitality industries.
-        Interview for a full or part-time, seasonal or year-round position with Wilson Plant Co, Sage Garden Café,
+        Interview for a full or part-time, seasonal or year-round position with Wilson Plant Co, Sage Garden Cafe,
         or our landscaping & production teams.
         """)
         st.markdown("---")
@@ -225,9 +217,9 @@ def main():
             st.session_state.processing_step = 0
             st.rerun()
     
-    # PHASE 3: SIMPLIFIED PROCESSING VIEW - No scrolling needed
+    # PHASE 3: PROCESSING VIEW - Completely separate clean page
     elif st.session_state.phase == 3:
-        # Generate submission ID once
+        # Generate submission ID and data once
         if not st.session_state.submission_id:
             st.session_state.submission_id = generate_submission_id()
             st.session_state.full_data = {
@@ -251,42 +243,42 @@ def main():
         
         applicant_name = f"{full_data.get('first_name')} {full_data.get('last_name')}"
         
-        # SIMPLE, CENTERED PROCESSING VIEW - User sees everything without scrolling
-        st.markdown("<br>" * 3, unsafe_allow_html=True)  # Some space from top
-        
-        st.title("Submitting Your Application")
+        # CLEAN PROCESSING PAGE - No form visible, just status
+        st.title("Processing Your Application")
         st.write(f"**Applicant:** {applicant_name}")
         st.info(f"**Reference ID:** {sub_id}")
         
-        st.markdown("### Please wait while we process your application...")
+        st.markdown("---")
+        st.markdown("### Please wait, do not close this page...")
         
-        # Progress box - ALWAYS visible
-        progress_container = st.container()
-        
-        with progress_container:
-            # Show current step prominently
+        # Progress indicators - clearly visible
+        if step >= 0:
             if step == 0:
                 st.markdown("#### Preparing your application...")
                 st.progress(0.25)
-            elif step == 1:
+            else:
                 st.success("Application prepared")
-                st.markdown("#### Sending to our HR team...")
+        
+        if step >= 1:
+            if step == 1:
+                st.markdown("#### Saving application...")
                 st.progress(0.50)
-            elif step == 2:
-                st.success("Application prepared")
-                st.success("Sent to our HR team")
-                st.markdown("#### Registering for job fair...")
+            elif step > 1:
+                st.success("Application saved")
+        
+        if step >= 2:
+            if step == 2:
+                st.markdown("#### Sending notifications...")
                 st.progress(0.75)
-            elif step == 3:
-                st.success("Application prepared")
-                st.success("Sent to our HR team")
-                st.success("Registered for job fair")
-                st.markdown("#### Finalizing...")
+            elif step > 2:
+                st.success("Notifications sent")
+        
+        if step >= 3:
+            if step == 3:
+                st.markdown("#### Finalizing submission...")
                 st.progress(1.0)
         
-        # EXECUTE STEP
-        
-        # STEP 0: Generate PDF
+        # Execute current step
         if step == 0:
             print(f"SUBMISSION {sub_id}: STEP 0 - Generating PDF for {applicant_name}")
             
@@ -308,7 +300,6 @@ def main():
             time.sleep(0.5)
             st.rerun()
         
-        # STEP 1: Upload PDF & Save to Sheets
         elif step == 1:
             print(f"SUBMISSION {sub_id}: STEP 1 - Saving to sheets for {applicant_name}")
             
@@ -346,7 +337,6 @@ def main():
             time.sleep(0.5)
             st.rerun()
         
-        # STEP 2: Send Notifications
         elif step == 2:
             print(f"SUBMISSION {sub_id}: STEP 2 - Sending emails for {applicant_name}")
             
@@ -374,7 +364,6 @@ def main():
             time.sleep(0.5)
             st.rerun()
         
-        # STEP 3: Finalize
         elif step == 3:
             print(f"SUBMISSION {sub_id}: STEP 3 - Finalizing for {applicant_name}")
             
