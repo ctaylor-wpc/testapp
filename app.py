@@ -49,8 +49,8 @@ def check_render_loop():
     st.session_state.render_count += 1
     
     if st.session_state.render_count > 30 and (time.time() - st.session_state.render_start) < 5:
-        print(f"⚠️ INFINITE LOOP DETECTED: {st.session_state.render_count} renders")
-        st.error("⚠️ App error detected. Please refresh the page.")
+        print(f"INFINITE LOOP DETECTED: {st.session_state.render_count} renders")
+        st.error("App error detected. Please refresh the page.")
         st.stop()
     
     if time.time() - st.session_state.render_start > 5:
@@ -60,7 +60,7 @@ def check_render_loop():
 def initialize_app():
     """Initialize session state"""
     if 'initialized' not in st.session_state:
-        print("🔧 INITIALIZING NEW SESSION")
+        print("INITIALIZING NEW SESSION")
         st.session_state.initialized = True
         st.session_state.phase = 1
         st.session_state.basic_info = {}
@@ -68,7 +68,7 @@ def initialize_app():
         st.session_state.application_data = {}
         st.session_state.submission_id = None
         st.session_state.submitted = False
-        st.session_state.processing_step = 0  # Track which step we're on
+        st.session_state.processing_step = 0
         st.session_state.pdf_buffer = None
         st.session_state.pdf_filename = None
         st.session_state.full_data = None
@@ -76,7 +76,7 @@ def initialize_app():
 
 def reset_app():
     """Complete reset"""
-    print("🔄 RESETTING APP")
+    print("RESETTING APP")
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     initialize_app()
@@ -84,7 +84,7 @@ def reset_app():
 def generate_submission_id():
     """Generate unique ID"""
     sub_id = str(uuid.uuid4())[:8].upper()
-    print(f"🆔 NEW SUBMISSION ID: {sub_id}")
+    print(f"NEW SUBMISSION ID: {sub_id}")
     return sub_id
 
 def main():
@@ -94,7 +94,7 @@ def main():
     # TERMINAL STATE - Show completion page
     if st.session_state.get('submitted'):
         sub_id = st.session_state.submission_id
-        print(f"📌 TERMINAL STATE: ID {sub_id}")
+        print(f"TERMINAL STATE: ID {sub_id}")
         
         st.title("✅ Application Submitted!")
         st.success("Your application has been received.")
@@ -141,7 +141,7 @@ def main():
     
     # PHASE 1: Registration
     if st.session_state.phase == 1:
-        print(f"📋 PHASE 1: Registration")
+        print(f"PHASE 1: Registration")
         from application_scheduling import render_scheduling_section
         
         st.title("Wilson Plant Co. + Sage Garden Cafe Job Fair")
@@ -170,13 +170,13 @@ def main():
         schedule_data = render_scheduling_section()
         
         if st.button("Continue to Application", type="primary", use_container_width=True, key="phase1_continue"):
-            print(f"🔘 Continue clicked: {first_name} {last_name} {email}")
+            print(f"Continue clicked: {first_name} {last_name} {email}")
             
             if not all([first_name.strip(), last_name.strip(), email.strip()]):
-                print("❌ Missing required fields")
+                print("Missing required fields")
                 st.error("Please fill in all required fields (First Name, Last Name, Email)")
             elif not schedule_data:
-                print("❌ No schedule selected")
+                print("No schedule selected")
                 st.error("Please select a time slot for your interview")
             else:
                 st.session_state.basic_info = {
@@ -186,19 +186,19 @@ def main():
                 }
                 st.session_state.schedule_data = schedule_data
                 st.session_state.phase = 2
-                print(f"✅ PHASE 1 COMPLETE - {first_name} {last_name}")
+                print(f"PHASE 1 COMPLETE - {first_name} {last_name}")
                 st.rerun()
     
     # PHASE 2: Application Form
     elif st.session_state.phase == 2:
-        print(f"📝 PHASE 2: Application - {st.session_state.basic_info.get('first_name')} {st.session_state.basic_info.get('last_name')}")
+        print(f"PHASE 2: Application - {st.session_state.basic_info.get('first_name')} {st.session_state.basic_info.get('last_name')}")
         from application import render_application_form
         
         st.title("Wilson Plant Co. + Sage Garden Cafe Job Fair")
         st.header("Application for Employment")
         
         if st.button("← Back to Registration", key="phase2_back"):
-            print("🔙 Back to registration")
+            print("Back to registration")
             st.session_state.phase = 1
             st.rerun()
         
@@ -211,10 +211,10 @@ def main():
         )
         
         if application_data:
-            print(f"✅ Form submitted - {st.session_state.basic_info.get('first_name')} {st.session_state.basic_info.get('last_name')}")
+            print(f"Form submitted - {st.session_state.basic_info.get('first_name')} {st.session_state.basic_info.get('last_name')}")
             st.session_state.application_data = application_data
             st.session_state.phase = 3
-            st.session_state.processing_step = 0  # Reset to step 0
+            st.session_state.processing_step = 0
             st.rerun()
     
     # PHASE 3: Multi-step processing (NON-BLOCKING)
@@ -260,7 +260,7 @@ def main():
         
         # STEP 0: Generate PDF (with immediate rerun after)
         if step == 0:
-            print(f"📄 SUBMISSION {sub_id}: STEP 0 - Generating PDF for {applicant_name}")
+            print(f"SUBMISSION {sub_id}: STEP 0 - Generating PDF for {applicant_name}")
             
             from application_pdf_generator import generate_application_pdf
             
@@ -269,20 +269,20 @@ def main():
                 if pdf_buffer:
                     st.session_state.pdf_buffer = pdf_buffer
                     status['pdf'] = True
-                    print(f"✅ SUBMISSION {sub_id}: PDF generated for {applicant_name}")
+                    print(f"SUBMISSION {sub_id}: PDF generated for {applicant_name}")
                 else:
-                    print(f"⚠️ SUBMISSION {sub_id}: PDF generation failed for {applicant_name}")
+                    print(f"SUBMISSION {sub_id}: PDF generation failed for {applicant_name}")
             except Exception as e:
-                print(f"❌ SUBMISSION {sub_id}: PDF error for {applicant_name} - {e}")
+                print(f"SUBMISSION {sub_id}: PDF error for {applicant_name} - {e}")
                 print(traceback.format_exc())
             
             st.session_state.processing_step = 1
-            time.sleep(0.3)  # Brief pause for user to see progress
-            st.rerun()  # Force rerender - prevents blocking
+            time.sleep(0.3)
+            st.rerun()
         
         # STEP 1: Upload PDF & Save to Sheets
         elif step == 1:
-            print(f"📊 SUBMISSION {sub_id}: STEP 1 - Saving to sheets for {applicant_name}")
+            print(f"SUBMISSION {sub_id}: STEP 1 - Saving to sheets for {applicant_name}")
             
             from application_sheets_manager import upload_pdf_to_drive, send_application_to_sheet
             
@@ -292,13 +292,13 @@ def main():
             # Upload PDF if available
             if st.session_state.pdf_buffer:
                 try:
-                    print(f"☁️ SUBMISSION {sub_id}: Uploading PDF for {applicant_name}")
+                    print(f"SUBMISSION {sub_id}: Uploading PDF for {applicant_name}")
                     pdf_link = upload_pdf_to_drive(st.session_state.pdf_buffer, pdf_filename)
                     if pdf_link:
                         status['drive'] = True
-                        print(f"✅ SUBMISSION {sub_id}: PDF uploaded for {applicant_name}")
+                        print(f"SUBMISSION {sub_id}: PDF uploaded for {applicant_name}")
                 except Exception as e:
-                    print(f"❌ SUBMISSION {sub_id}: Upload failed for {applicant_name} - {e}")
+                    print(f"SUBMISSION {sub_id}: Upload failed for {applicant_name} - {e}")
                     print(traceback.format_exc())
             
             full_data['pdf_link'] = pdf_link
@@ -309,11 +309,11 @@ def main():
             try:
                 status['sheets'] = send_application_to_sheet(full_data)
                 if status['sheets']:
-                    print(f"✅ SUBMISSION {sub_id}: Saved to sheets for {applicant_name}")
+                    print(f"SUBMISSION {sub_id}: Saved to sheets for {applicant_name}")
                 else:
-                    print(f"❌ SUBMISSION {sub_id}: Sheets save failed for {applicant_name}")
+                    print(f"SUBMISSION {sub_id}: Sheets save failed for {applicant_name}")
             except Exception as e:
-                print(f"❌ SUBMISSION {sub_id}: Sheets error for {applicant_name} - {e}")
+                print(f"SUBMISSION {sub_id}: Sheets error for {applicant_name} - {e}")
                 print(traceback.format_exc())
             
             st.session_state.processing_step = 2
@@ -322,7 +322,7 @@ def main():
         
         # STEP 2: Send Notifications
         elif step == 2:
-            print(f"📧 SUBMISSION {sub_id}: STEP 2 - Sending emails for {applicant_name}")
+            print(f"SUBMISSION {sub_id}: STEP 2 - Sending emails for {applicant_name}")
             
             from application_notifications import send_application_notification, send_confirmation_email
             
@@ -332,18 +332,18 @@ def main():
                     st.session_state.pdf_buffer.seek(0)
                     status['company_email'] = send_application_notification(full_data, st.session_state.pdf_buffer)
                     if status['company_email']:
-                        print(f"✅ SUBMISSION {sub_id}: Company email sent for {applicant_name}")
+                        print(f"SUBMISSION {sub_id}: Company email sent for {applicant_name}")
                 except Exception as e:
-                    print(f"❌ SUBMISSION {sub_id}: Company email error for {applicant_name} - {e}")
+                    print(f"SUBMISSION {sub_id}: Company email error for {applicant_name} - {e}")
                     print(traceback.format_exc())
             
             # Confirmation email
             try:
                 status['confirmation_email'] = send_confirmation_email(full_data)
                 if status['confirmation_email']:
-                    print(f"✅ SUBMISSION {sub_id}: Confirmation sent for {applicant_name}")
+                    print(f"SUBMISSION {sub_id}: Confirmation sent for {applicant_name}")
             except Exception as e:
-                print(f"❌ SUBMISSION {sub_id}: Confirmation error for {applicant_name} - {e}")
+                print(f"SUBMISSION {sub_id}: Confirmation error for {applicant_name} - {e}")
                 print(traceback.format_exc())
             
             st.session_state.processing_step = 3
@@ -352,50 +352,20 @@ def main():
         
         # STEP 3: Finalize
         elif step == 3:
-            print(f"🎯 SUBMISSION {sub_id}: STEP 3 - Finalizing for {applicant_name}")
+            print(f"SUBMISSION {sub_id}: STEP 3 - Finalizing for {applicant_name}")
             
             st.session_state.status = status
             st.session_state.submitted = True
             
-            print(f"📊 SUBMISSION {sub_id}: COMPLETE for {applicant_name}")
-            print(f"   PDF: {'✅' if status['pdf'] else '❌'}")
-            print(f"   Drive: {'✅' if status['drive'] else '❌'}")
-            print(f"   Sheets: {'✅' if status['sheets'] else '❌'}")
-            print(f"   Company Email: {'✅' if status['company_email'] else '❌'}")
-            print(f"   Confirmation: {'✅' if status['confirmation_email'] else '❌'}")
+            print(f"SUBMISSION {sub_id}: COMPLETE for {applicant_name}")
+            print(f"  PDF: {'YES' if status['pdf'] else 'NO'}")
+            print(f"  Drive: {'YES' if status['drive'] else 'NO'}")
+            print(f"  Sheets: {'YES' if status['sheets'] else 'NO'}")
+            print(f"  Company Email: {'YES' if status['company_email'] else 'NO'}")
+            print(f"  Confirmation: {'YES' if status['confirmation_email'] else 'NO'}")
             
             time.sleep(0.5)
-            st.rerun()  # Jump to terminal state
+            st.rerun()
 
 if __name__ == "__main__":
     main()
-```
-
----
-
-## **What This Fixes:**
-
-### **Before:**
-- 17-98 second silent hang
-- User sees nothing, thinks app is broken
-- All work happens in one blocking operation
-- Mobile browsers time out
-
-### **After:**
-- **Step 0:** "Preparing application..." → PDF generates → **RERUN** (user sees update)
-- **Step 1:** "Sending to HR..." → Upload + Save sheets → **RERUN** (user sees update)
-- **Step 2:** "Registering..." → Send emails → **RERUN** (user sees update)
-- **Step 3:** "Complete!" → Terminal state
-
-Each step takes 1-5 seconds max, with visible progress between each.
-
-### **Logs Now Show:**
-```
-📄 SUBMISSION A7F3C2D1: STEP 0 - Generating PDF for John Smith
-✅ SUBMISSION A7F3C2D1: PDF generated for John Smith
-📊 SUBMISSION A7F3C2D1: STEP 1 - Saving to sheets for John Smith
-✅ SUBMISSION A7F3C2D1: Saved to sheets for John Smith
-📧 SUBMISSION A7F3C2D1: STEP 2 - Sending emails for John Smith
-✅ SUBMISSION A7F3C2D1: Company email sent for John Smith
-🎯 SUBMISSION A7F3C2D1: STEP 3 - Finalizing for John Smith
-📊 SUBMISSION A7F3C2D1: COMPLETE for John Smith
