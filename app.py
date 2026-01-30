@@ -1,6 +1,6 @@
 # app.py
 # Main application file for Job Fair Registration
-# NON-BLOCKING VERSION - Steps process with visible progress
+# FIXED: Progress shown at button location, no scrolling needed
 
 import os
 import streamlit as st
@@ -36,6 +36,14 @@ st.markdown("""
 h1, h2, h3 {
     margin-top: 1.5rem;
     margin-bottom: 1rem;
+}
+/* Highlight processing container */
+.processing-box {
+    border: 2px solid #1f77b4;
+    border-radius: 8px;
+    padding: 20px;
+    background-color: #f0f8ff;
+    margin: 20px 0;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -96,7 +104,7 @@ def main():
         sub_id = st.session_state.submission_id
         print(f"TERMINAL STATE: ID {sub_id}")
         
-        st.title("✅ Application Submitted!")
+        st.title("Application Submitted!")
         st.success("Your application has been received.")
         
         if sub_id:
@@ -114,16 +122,16 @@ def main():
         if status:
             st.markdown("### Submission Status:")
             if status.get('sheets'):
-                st.write("✅ Application saved to database")
+                st.write("Application saved to database")
             if status.get('pdf'):
-                st.write("✅ PDF generated")
+                st.write("PDF generated")
             if status.get('confirmation_email'):
-                st.write("✅ Confirmation email sent")
+                st.write("Confirmation email sent")
         
         if st.session_state.pdf_buffer:
             st.session_state.pdf_buffer.seek(0)
             st.download_button(
-                label="📄 Download Your Application PDF",
+                label="Download Your Application PDF",
                 data=st.session_state.pdf_buffer,
                 file_name=st.session_state.pdf_filename,
                 mime="application/pdf",
@@ -197,7 +205,7 @@ def main():
         st.title("Wilson Plant Co. + Sage Garden Cafe Job Fair")
         st.header("Application for Employment")
         
-        if st.button("← Back to Registration", key="phase2_back"):
+        if st.button("Back to Registration", key="phase2_back"):
             print("Back to registration")
             st.session_state.phase = 1
             st.rerun()
@@ -217,7 +225,7 @@ def main():
             st.session_state.processing_step = 0
             st.rerun()
     
-    # PHASE 3: Multi-step processing (NON-BLOCKING)
+    # PHASE 3: SIMPLIFIED PROCESSING VIEW - No scrolling needed
     elif st.session_state.phase == 3:
         # Generate submission ID once
         if not st.session_state.submission_id:
@@ -243,22 +251,42 @@ def main():
         
         applicant_name = f"{full_data.get('first_name')} {full_data.get('last_name')}"
         
+        # SIMPLE, CENTERED PROCESSING VIEW - User sees everything without scrolling
+        st.markdown("<br>" * 3, unsafe_allow_html=True)  # Some space from top
+        
         st.title("Submitting Your Application")
-        st.info(f"**Reference ID:** {sub_id}")
         st.write(f"**Applicant:** {applicant_name}")
+        st.info(f"**Reference ID:** {sub_id}")
         
-        # Progress indicators
-        step1_txt = "⏳ Preparing your application..." if step == 0 else ("✅ Application prepared" if status.get('pdf') else "⚠️ Application prepared (PDF unavailable)")
-        step2_txt = "⏳ Sending to our HR team..." if step == 1 else ("✅ Sent to our HR team" if step > 1 and status.get('sheets') else ("❌ Failed to send" if step > 1 else "⚪ Sending to our HR team"))
-        step3_txt = "⏳ Registering for job fair..." if step == 2 else ("✅ Registered for job fair" if step > 2 else "⚪ Registering for job fair")
-        step4_txt = "⏳ Finalizing..." if step == 3 else ("✅ Complete!" if step > 3 else "⚪ Finalizing")
+        st.markdown("### Please wait while we process your application...")
         
-        st.markdown(step1_txt)
-        st.markdown(step2_txt)
-        st.markdown(step3_txt)
-        st.markdown(step4_txt)
+        # Progress box - ALWAYS visible
+        progress_container = st.container()
         
-        # STEP 0: Generate PDF (with immediate rerun after)
+        with progress_container:
+            # Show current step prominently
+            if step == 0:
+                st.markdown("#### Preparing your application...")
+                st.progress(0.25)
+            elif step == 1:
+                st.success("Application prepared")
+                st.markdown("#### Sending to our HR team...")
+                st.progress(0.50)
+            elif step == 2:
+                st.success("Application prepared")
+                st.success("Sent to our HR team")
+                st.markdown("#### Registering for job fair...")
+                st.progress(0.75)
+            elif step == 3:
+                st.success("Application prepared")
+                st.success("Sent to our HR team")
+                st.success("Registered for job fair")
+                st.markdown("#### Finalizing...")
+                st.progress(1.0)
+        
+        # EXECUTE STEP
+        
+        # STEP 0: Generate PDF
         if step == 0:
             print(f"SUBMISSION {sub_id}: STEP 0 - Generating PDF for {applicant_name}")
             
@@ -277,7 +305,7 @@ def main():
                 print(traceback.format_exc())
             
             st.session_state.processing_step = 1
-            time.sleep(0.3)
+            time.sleep(0.5)
             st.rerun()
         
         # STEP 1: Upload PDF & Save to Sheets
@@ -289,7 +317,6 @@ def main():
             pdf_filename = f"Application_{full_data['last_name']}_{full_data['first_name']}.pdf"
             pdf_link = ""
             
-            # Upload PDF if available
             if st.session_state.pdf_buffer:
                 try:
                     print(f"SUBMISSION {sub_id}: Uploading PDF for {applicant_name}")
@@ -305,7 +332,6 @@ def main():
             st.session_state.full_data = full_data
             st.session_state.pdf_filename = pdf_filename
             
-            # Save to Sheets
             try:
                 status['sheets'] = send_application_to_sheet(full_data)
                 if status['sheets']:
@@ -317,7 +343,7 @@ def main():
                 print(traceback.format_exc())
             
             st.session_state.processing_step = 2
-            time.sleep(0.3)
+            time.sleep(0.5)
             st.rerun()
         
         # STEP 2: Send Notifications
@@ -326,7 +352,6 @@ def main():
             
             from application_notifications import send_application_notification, send_confirmation_email
             
-            # Company email
             if st.session_state.pdf_buffer and status.get('sheets'):
                 try:
                     st.session_state.pdf_buffer.seek(0)
@@ -337,7 +362,6 @@ def main():
                     print(f"SUBMISSION {sub_id}: Company email error for {applicant_name} - {e}")
                     print(traceback.format_exc())
             
-            # Confirmation email
             try:
                 status['confirmation_email'] = send_confirmation_email(full_data)
                 if status['confirmation_email']:
@@ -347,7 +371,7 @@ def main():
                 print(traceback.format_exc())
             
             st.session_state.processing_step = 3
-            time.sleep(0.3)
+            time.sleep(0.5)
             st.rerun()
         
         # STEP 3: Finalize
