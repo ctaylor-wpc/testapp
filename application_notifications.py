@@ -1,5 +1,5 @@
 # application_notifications.py
-# Email notification system for job fair applications
+# Email notification system for employment applications
 
 import streamlit as st
 import smtplib
@@ -14,7 +14,7 @@ from config_secrets import get_email_config
 def format_positions_email(positions):
     """Format positions for email display"""
     position_list = []
-    
+
     # Wilson Plant Co
     wpc = []
     if positions.get('wpc_cashier'): wpc.append("Cashier")
@@ -24,7 +24,7 @@ def format_positions_email(positions):
     if positions.get('wpc_admin'): wpc.append("Administration")
     if wpc:
         position_list.append("Wilson Plant Co: " + ", ".join(wpc))
-    
+
     # Landscaping
     land = []
     if positions.get('land_designer'): land.append("Designer")
@@ -32,7 +32,7 @@ def format_positions_email(positions):
     if positions.get('land_installer'): land.append("Installer")
     if land:
         position_list.append("Landscaping: " + ", ".join(land))
-    
+
     # Cafe
     cafe = []
     if positions.get('cafe_foh'): cafe.append("Front-of-house")
@@ -40,12 +40,12 @@ def format_positions_email(positions):
     if positions.get('cafe_admin'): cafe.append("Administration")
     if cafe:
         position_list.append("Sage Garden Cafe: " + ", ".join(cafe))
-    
+
     # Other
     if positions.get('other'):
         other_desc = positions.get('other_description', 'Not specified')
         position_list.append(f"Other: {other_desc}")
-    
+
     return "\n".join(position_list) if position_list else "Not specified"
 
 
@@ -62,7 +62,7 @@ def format_employers_email(employers):
     """Format employment history for email"""
     if not employers or not any(emp.get('employer') for emp in employers):
         return "Not provided"
-    
+
     emp_text = []
     for i, emp in enumerate(employers):
         if emp.get('employer'):
@@ -82,7 +82,7 @@ def format_references_email(references):
     """Format references for email"""
     if not references or not any(ref.get('name') for ref in references):
         return "Not provided"
-    
+
     ref_text = []
     for i, ref in enumerate(references):
         if ref.get('name'):
@@ -98,7 +98,7 @@ Reference {i+1}:
 def create_company_email_body(data):
     """Create the email body text for company notification"""
     email_body = f"""
-NEW JOB FAIR APPLICATION RECEIVED
+NEW EMPLOYMENT APPLICATION RECEIVED
 =====================================
 
 APPLICANT INFORMATION:
@@ -109,10 +109,6 @@ APPLICANT INFORMATION:
   Date of Birth: {data.get('dob', 'Not provided')}
   Address: {data.get('street_address', '')}, {data.get('city', '')}, {data.get('state', '')} {data.get('zip', '')}
 
-INTERVIEW SCHEDULE:
-  Location: {data.get('location', 'N/A')}
-  Date: {data.get('date', 'N/A')}
-  Time: {data.get('time_slot', 'N/A')}
 
 POSITION INFORMATION:
   Positions Applied For:
@@ -121,15 +117,19 @@ POSITION INFORMATION:
   Hours Preferred: {format_hours_email(data)}
   Expected Payrate: {data.get('expected_payrate', 'Not specified')}
 
+
 AVAILABILITY:
   Restrictions: {data.get('availability_restrictions', 'None')}
   Available to Start: {data.get('start_date', 'Not specified')}
 
+
 WHY APPLYING:
 {data.get('why_applying', 'Not provided')}
 
+
 SPECIAL TRAINING/SKILLS:
 {data.get('special_training', 'Not provided')}
+
 
 LEGAL INFORMATION:
   Legally entitled to work in U.S.: {data.get('legally_entitled', 'N/A')}
@@ -139,8 +139,10 @@ LEGAL INFORMATION:
   Valid driver's license: {data.get('drivers_license', 'N/A')}
   Reliable transportation: {data.get('reliable_transport', 'N/A')}
 
+
 EMPLOYMENT HISTORY:
 {format_employers_email(data.get('employers', []))}
+
 
 EDUCATION:
   College: {data.get('college_name', 'N/A')}
@@ -153,11 +155,14 @@ EDUCATION:
   Graduated: {data.get('hs_graduated', 'N/A')}
   Completion Date: {data.get('hs_completion', 'N/A')}
 
+
 REFERENCES:
 {format_references_email(data.get('references', []))}
 
+
 SUBMISSION DETAILS:
   Submitted: {data.get('submission_timestamp', 'N/A')}
+  Reference ID: {data.get('submission_id', 'N/A')}
 
 =====================================
 Application PDF is attached.
@@ -168,14 +173,12 @@ Application PDF is attached.
 def create_confirmation_email_body(data):
     """Create the confirmation email body for the applicant"""
     first_name = data.get('first_name', '')
-    date = data.get('date', '')
-    time = data.get('time_slot', '')
-    location = data.get('location', '')
-    address = data.get('address', '')
-    
-    email_body = f"""{first_name}, thanks for applying & signing up for our job fair. We look forward to meeting you {date}, {time}.
 
-As a reminder, your interview will be at our {location} store which is at {address}. When you arrive, head straight in and sign in at the register.
+    email_body = f"""{first_name}, thank you for submitting your application to Wilson Plant Co. + Sage Garden Cafe!
+
+We have received your application and someone from our team will be in touch to schedule an interview with you.
+
+In the meantime, if you have any questions, feel free to reach out.
 
 Thanks again for your interest & time,
 
@@ -189,40 +192,37 @@ Wilson Plant Co. + Sage Garden Cafe
 def send_application_notification(data, pdf_buffer):
     """
     Send email notification to company with application data and PDF attachment
-    
+
     Args:
         data: Dictionary containing all application data
         pdf_buffer: BytesIO buffer containing the generated PDF
-    
+
     Returns:
         bool: True if email sent successfully, False otherwise
     """
     print(">>> Entering send_application_notification()")
     print(f">>> Recipient: {data.get('first_name')} {data.get('last_name')}")
-    
+
     try:
         config = get_email_config()
-        
+
         if not config or not all([config.get('smtp_server'), config.get('sender_email'), config.get('sender_password')]):
             print(">>> ERROR: Email configuration is incomplete")
             st.error("Email configuration is incomplete. Please check secrets.")
             return False
-        
+
         print(f">>> SMTP Server: {config.get('smtp_server')}")
         print(f">>> Sender: {config.get('sender_email')}")
         print(f">>> Company Email: {config.get('company_email')}")
-        
-        # Create email message
+
         msg = MIMEMultipart()
         msg["From"] = formataddr((config['sender_name'], config['sender_email']))
         msg["To"] = config['company_email']
-        msg["Subject"] = f"Job Fair Application: {data.get('first_name', '')} {data.get('last_name', '')}"
-        
-        # Add email body
+        msg["Subject"] = f"New Application: {data.get('first_name', '')} {data.get('last_name', '')}"
+
         email_body = create_company_email_body(data)
         msg.attach(MIMEText(email_body, "plain"))
-        
-        # Add PDF attachment
+
         if pdf_buffer:
             print(">>> Attaching PDF to email")
             pdf_buffer.seek(0)
@@ -232,8 +232,7 @@ def send_application_notification(data, pdf_buffer):
             msg.attach(part)
         else:
             print(">>> No PDF to attach")
-        
-        # Send email
+
         print(">>> Connecting to SMTP server...")
         with smtplib.SMTP(config['smtp_server'], config['smtp_port']) as server:
             print(">>> Starting TLS...")
@@ -242,10 +241,10 @@ def send_application_notification(data, pdf_buffer):
             server.login(config['sender_email'], config['sender_password'])
             print(">>> Sending email...")
             server.sendmail(config['sender_email'], config['company_email'], msg.as_string())
-        
+
         print(">>> Company notification email sent successfully")
         return True
-    
+
     except Exception as e:
         print(f">>> ERROR: Failed to send notification email to company: {e}")
         print(traceback.format_exc())
@@ -256,35 +255,32 @@ def send_application_notification(data, pdf_buffer):
 def send_confirmation_email(data):
     """
     Send confirmation email to the applicant
-    
+
     Args:
         data: Dictionary containing all application data
-    
+
     Returns:
         bool: True if email sent successfully, False otherwise
     """
     print(">>> Entering send_confirmation_email()")
     print(f">>> Recipient: {data.get('email')}")
-    
+
     try:
         config = get_email_config()
-        
+
         if not config or not all([config.get('smtp_server'), config.get('sender_email'), config.get('sender_password')]):
             print(">>> ERROR: Email configuration is incomplete")
             st.error("Email configuration is incomplete. Please check secrets.")
             return False
-        
-        # Create email message
+
         msg = MIMEMultipart()
         msg["From"] = formataddr((config['sender_name'], config['sender_email']))
         msg["To"] = data.get('email', '')
-        msg["Subject"] = "Job Fair Registration Confirmation"
-        
-        # Add email body
+        msg["Subject"] = "Application Received - Wilson Plant Co. + Sage Garden Cafe"
+
         email_body = create_confirmation_email_body(data)
         msg.attach(MIMEText(email_body, "plain"))
-        
-        # Send email
+
         print(">>> Connecting to SMTP server...")
         with smtplib.SMTP(config['smtp_server'], config['smtp_port']) as server:
             print(">>> Starting TLS...")
@@ -293,10 +289,10 @@ def send_confirmation_email(data):
             server.login(config['sender_email'], config['sender_password'])
             print(">>> Sending email...")
             server.sendmail(config['sender_email'], data.get('email', ''), msg.as_string())
-        
+
         print(">>> Confirmation email sent successfully")
         return True
-    
+
     except Exception as e:
         print(f">>> ERROR: Failed to send confirmation email to applicant: {e}")
         print(traceback.format_exc())
