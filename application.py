@@ -1,5 +1,8 @@
 # application.py
 # Application for Employment form module
+# KEY DESIGN: On submit, data is saved to session_state and st.rerun() is called
+# immediately. The form never "returns" data. This guarantees the page fully
+# transitions to the processing screen before any processing UI appears.
 
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
@@ -9,34 +12,62 @@ import io
 from PIL import Image
 
 
-def render_application_form(first_name_prefill='', last_name_prefill='', email_prefill=''):
-    """Render the complete application form and return data when submitted"""
+def _collect_signature(canvas_result):
+    """Extract signature from canvas. Returns (has_signature, signature_base64)."""
+    if canvas_result is None or canvas_result.image_data is None:
+        return False, None
+    try:
+        import numpy as np
+        if np.any(canvas_result.image_data[:, :, 3] > 0):
+            sig_img = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
+            sig_buffer = io.BytesIO()
+            sig_img.save(sig_buffer, format='PNG')
+            sig_buffer.seek(0)
+            sig_b64 = base64.b64encode(sig_buffer.getvalue()).decode('utf-8')
+            return True, sig_b64
+    except Exception as e:
+        print(f"Signature processing error: {e}")
+    return False, None
 
-    # Personal Information
+
+def render_application_form(first_name_prefill='', last_name_prefill='', email_prefill=''):
+    """
+    Render the complete application form.
+    Does NOT return data. On valid submit it:
+      1. Saves all form data to st.session_state['pending_application']
+      2. Sets st.session_state['form_ready_to_process'] = True
+      3. Calls st.rerun() immediately
+    app.py detects 'form_ready_to_process' and advances to the processing phase.
+    """
+
+    # ------------------------------------------------------------------ #
+    # PERSONAL INFORMATION
+    # ------------------------------------------------------------------ #
     st.header("Personal Information")
 
-    first_name = st.text_input("First Name *", value=first_name_prefill, key="app_first_name")
-    last_name = st.text_input("Last Name *", value=last_name_prefill, key="app_last_name")
-    email = st.text_input("Email Address *", value=email_prefill, key="app_email")
-    phone = st.text_input("Phone Number *", key="phone")
+    first_name      = st.text_input("First Name *",        value=first_name_prefill, key="app_first_name")
+    last_name       = st.text_input("Last Name *",         value=last_name_prefill,  key="app_last_name")
+    email           = st.text_input("Email Address *",     value=email_prefill,      key="app_email")
+    phone           = st.text_input("Phone Number *",      key="phone")
     alternate_phone = st.text_input("Alternate Phone Number (optional)", key="alternate_phone")
 
-    # Date of Birth - NOT required
     dob = st.text_input(
-        "Date of Birth (MM/DD/YYYY - required only if under 18)",
+        "Date of Birth (MM/DD/YYYY – required only if under 18)",
         key="dob",
         placeholder="MM/DD/YYYY",
-        help="Enter your date of birth in MM/DD/YYYY format (e.g., 03/15/1995). Only required if you are under 18."
+        help="Only required if you are under 18."
     )
 
     street_address = st.text_input("Street Address *", key="street_address")
-    city = st.text_input("City *", key="city")
-    state = st.text_input("State *", value="KY", key="state")
-    zip_code = st.text_input("Zip *", key="zip")
+    city           = st.text_input("City *",            key="city")
+    state          = st.text_input("State *",           value="KY", key="state")
+    zip_code       = st.text_input("Zip *",             key="zip")
 
     st.markdown("---")
 
-    # Position Information
+    # ------------------------------------------------------------------ #
+    # POSITION INFORMATION
+    # ------------------------------------------------------------------ #
     st.header("Position Information")
     st.subheader("Which positions interest you?")
     st.write("Select all that apply. Hover over each position for details.")
@@ -44,65 +75,21 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
     positions = {}
 
     st.markdown("**Wilson Plant Co.**")
-    positions['wpc_cashier'] = st.checkbox(
-        "Cashier",
-        key="pos_wpc_cashier",
-        help="Process sales, assist customers, handle cash and card transactions"
-    )
-    positions['wpc_greenhouse'] = st.checkbox(
-        "Greenhouse Associate (Annuals, Perennials, & Houseplants)",
-        key="pos_wpc_greenhouse",
-        help="Assist customers, maintain plant displays, water and care for greenhouse plants"
-    )
-    positions['wpc_nursery'] = st.checkbox(
-        "Nursery Associate (Trees & Shrubs)",
-        key="pos_wpc_nursery",
-        help="Help customers select trees and shrubs, load materials, maintain outdoor displays"
-    )
-    positions['wpc_waterer'] = st.checkbox(
-        "Production/Waterer (Growing Greenhouses)",
-        key="pos_wpc_waterer",
-        help="Water plants, transplant, maintain growing areas, assist with plant production"
-    )
-    positions['wpc_admin'] = st.checkbox(
-        "Administration (Marketing, Accounting, & HR)",
-        key="pos_wpc_admin",
-        help="Office support, marketing tasks, bookkeeping, HR assistance"
-    )
+    positions['wpc_cashier']    = st.checkbox("Cashier",                                                    key="pos_wpc_cashier",    help="Process sales, assist customers, handle cash and card transactions")
+    positions['wpc_greenhouse'] = st.checkbox("Greenhouse Associate (Annuals, Perennials, & Houseplants)",  key="pos_wpc_greenhouse", help="Assist customers, maintain plant displays, water and care for greenhouse plants")
+    positions['wpc_nursery']    = st.checkbox("Nursery Associate (Trees & Shrubs)",                         key="pos_wpc_nursery",    help="Help customers select trees and shrubs, load materials, maintain outdoor displays")
+    positions['wpc_waterer']    = st.checkbox("Production/Waterer (Growing Greenhouses)",                   key="pos_wpc_waterer",    help="Water plants, transplant, maintain growing areas, assist with plant production")
+    positions['wpc_admin']      = st.checkbox("Administration (Marketing, Accounting, & HR)",               key="pos_wpc_admin",      help="Office support, marketing tasks, bookkeeping, HR assistance")
 
     st.markdown("**Landscaping**")
-    positions['land_designer'] = st.checkbox(
-        "Designer",
-        key="pos_land_designer",
-        help="Create landscape designs, meet with clients, develop planting plans"
-    )
-    positions['land_foreman'] = st.checkbox(
-        "Foreman",
-        key="pos_land_foreman",
-        help="Lead installation crews, manage projects, coordinate schedules"
-    )
-    positions['land_installer'] = st.checkbox(
-        "Installer",
-        key="pos_land_installer",
-        help="Plant installation, hardscape work, outdoor construction and maintenance"
-    )
+    positions['land_designer']  = st.checkbox("Designer",  key="pos_land_designer",  help="Create landscape designs, meet with clients, develop planting plans")
+    positions['land_foreman']   = st.checkbox("Foreman",   key="pos_land_foreman",   help="Lead installation crews, manage projects, coordinate schedules")
+    positions['land_installer'] = st.checkbox("Installer", key="pos_land_installer", help="Plant installation, hardscape work, outdoor construction and maintenance")
 
     st.markdown("**Sage Garden Cafe**")
-    positions['cafe_foh'] = st.checkbox(
-        "Front-of-House (Server, Cashier, Barista)",
-        key="pos_cafe_foh",
-        help="Take orders, serve customers, prepare beverages, handle payments"
-    )
-    positions['cafe_boh'] = st.checkbox(
-        "Back-of-House (Cook, Dishwasher)",
-        key="pos_cafe_boh",
-        help="Food preparation, cooking, dishwashing, kitchen maintenance"
-    )
-    positions['cafe_admin'] = st.checkbox(
-        "Management",
-        key="pos_cafe_admin",
-        help="Supervise staff, manage operations, scheduling, inventory management"
-    )
+    positions['cafe_foh']   = st.checkbox("Front-of-House (Server, Cashier, Barista)", key="pos_cafe_foh",   help="Take orders, serve customers, prepare beverages, handle payments")
+    positions['cafe_boh']   = st.checkbox("Back-of-House (Cook, Dishwasher)",          key="pos_cafe_boh",   help="Food preparation, cooking, dishwashing, kitchen maintenance")
+    positions['cafe_admin'] = st.checkbox("Management",                                key="pos_cafe_admin", help="Supervise staff, manage operations, scheduling, inventory management")
 
     positions['other'] = st.checkbox("Something else", key="pos_other")
     if positions['other']:
@@ -110,35 +97,31 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
 
     st.markdown("---")
 
-    # Hours - IMPROVED interface
+    # ------------------------------------------------------------------ #
+    # WORK SCHEDULE PREFERENCE  (3 options; no sub-question about hours)
+    # ------------------------------------------------------------------ #
     st.subheader("Work Schedule Preference")
 
     schedule_type = st.radio(
         "What type of schedule are you looking for? *",
-        ["Part-time (under 30 hours/week)", "Full-time (30+ hours/week)"],
+        [
+            "Part-time (under 30 hours/week)",
+            "Full-time (30+ hours/week)",
+            "Flexible / Open"
+        ],
         key="schedule_type"
     )
 
-    if "Part-time" in schedule_type:
-        hours_detail = st.selectbox(
-            "How many hours per week?",
-            ["15-20 hours", "20-25 hours", "25-30 hours", "Flexible/Open"],
-            key="hours_detail"
-        )
-    else:
-        hours_detail = st.selectbox(
-            "How many hours per week?",
-            ["30-35 hours", "35-40 hours", "40+ hours", "Flexible/Open"],
-            key="hours_detail"
-        )
-
-    # Store in format compatible with existing code
-    hours_15_25 = "Part-time" in schedule_type and ("15-20" in hours_detail or "20-25" in hours_detail)
-    hours_30_40 = "Full-time" in schedule_type and ("30-35" in hours_detail or "35-40" in hours_detail)
-    hours_40_plus = "Full-time" in schedule_type and "40+" in hours_detail
+    # Populate legacy boolean fields for the sheet (column O: Hours Preferred)
+    hours_15_25   = "Part-time" in schedule_type
+    hours_30_40   = "Full-time" in schedule_type
+    hours_40_plus = False
 
     st.markdown("---")
 
+    # ------------------------------------------------------------------ #
+    # EXPECTED PAY RATE
+    # ------------------------------------------------------------------ #
     expected_payrate = st.text_input(
         "Based on your skills, education, and experience, what pay rate would you expect? *",
         key="expected_payrate",
@@ -146,37 +129,39 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
         help="Please provide a specific hourly rate or annual salary"
     )
 
-    payrate_error = False
+    payrate_warning = False
     if expected_payrate:
-        payrate_lower = expected_payrate.lower().strip()
-        forbidden_terms = ['negotiable', 'willing to discuss', 'open to discussion', 'flexible', 'open']
-        if any(term in payrate_lower for term in forbidden_terms):
-            st.warning("Please provide a specific pay rate rather than 'negotiable' or similar. We understand pay is flexible, but we need a starting point for discussion.")
-            payrate_error = True
+        forbidden = ['negotiable', 'willing to discuss', 'open to discussion', 'flexible', 'open']
+        if any(t in expected_payrate.lower() for t in forbidden):
+            st.warning("Please provide a specific pay rate rather than 'negotiable' or similar. "
+                       "We understand pay is flexible, but we need a starting point for discussion.")
+            payrate_warning = True
 
     st.markdown("---")
 
-    # Availability
+    # ------------------------------------------------------------------ #
+    # AVAILABILITY
+    # ------------------------------------------------------------------ #
     st.header("Availability")
 
     availability_restrictions = st.text_area(
         "Are there any days or times you would NOT be available for work?",
         key="availability_restrictions",
         height=100,
-        placeholder="e.g., 'Not available Sundays' or 'Cannot work before 3pm on weekdays'",
-        help="Let us know any scheduling restrictions you have"
+        placeholder="e.g., 'Not available Sundays' or 'Cannot work before 3pm on weekdays'"
     )
 
     start_date = st.text_input(
         "If hired, when would you be available to start? *",
         key="start_date",
-        placeholder="e.g., 'Immediately', 'Two weeks notice required', or a specific date",
-        help="When can you begin working?"
+        placeholder="e.g., 'Immediately', 'Two weeks notice required', or a specific date"
     )
 
     st.markdown("---")
 
-    # About You
+    # ------------------------------------------------------------------ #
+    # ABOUT YOU
+    # ------------------------------------------------------------------ #
     st.header("About You")
 
     why_applying = st.text_area(
@@ -195,59 +180,39 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
 
     st.markdown("---")
 
-    # Legal Information
+    # ------------------------------------------------------------------ #
+    # LEGAL INFORMATION
+    # ------------------------------------------------------------------ #
     st.header("Legal Information")
 
-    legally_entitled = st.radio(
-        "Are you legally entitled to work in the U.S.? *",
-        ["Yes", "No"],
-        key="legally_entitled"
+    legally_entitled   = st.radio("Are you legally entitled to work in the U.S.? *",                            ["Yes", "No"], key="legally_entitled")
+    perform_duties     = st.radio(
+        "This job requires physical duties such as bending, lifting, and extended standing in all weather "
+        "conditions. If hired, would you be able to perform the essential duties of this position with or "
+        "without reasonable accommodations? *",
+        ["Yes", "No"], key="perform_duties"
     )
-
-    perform_duties = st.radio(
-        "This job requires physical duties such as bending, lifting, and extended standing in all weather conditions. If hired, would you be able to perform the essential duties of this position with or without reasonable accommodations? *",
-        ["Yes", "No"],
-        key="perform_duties"
-    )
-
-    drug_test = st.radio(
-        "Are you willing to submit to a drug test? *",
-        ["Yes", "No"],
-        key="drug_test"
-    )
-
-    background_check = st.radio(
-        "Are you willing to submit to a background check? *",
-        ["Yes", "No"],
-        key="background_check"
-    )
-
-    drivers_license = st.radio(
-        "Do you have a valid drivers license? *",
-        ["Yes", "No"],
-        key="drivers_license"
-    )
-
-    reliable_transport = st.radio(
-        "Do you have reliable transportation to and from work? *",
-        ["Yes", "No"],
-        key="reliable_transport"
-    )
+    drug_test          = st.radio("Are you willing to submit to a drug test? *",                                 ["Yes", "No"], key="drug_test")
+    background_check   = st.radio("Are you willing to submit to a background check? *",                          ["Yes", "No"], key="background_check")
+    drivers_license    = st.radio("Do you have a valid driver's license? *",                                     ["Yes", "No"], key="drivers_license")
+    reliable_transport = st.radio("Do you have reliable transportation to and from work? *",                     ["Yes", "No"], key="reliable_transport")
 
     st.markdown("---")
 
-    # Signature
+    # ------------------------------------------------------------------ #
+    # SIGNATURE
+    # ------------------------------------------------------------------ #
     st.header("Signature")
     st.markdown("""
-    I agree that all statements are true and I understand that any falsification or willful omission
-    is sufficient cause for dismissal or refusal of employment. I understand that this application is
-    not a contractual agreement and by signing I agree that work at Wilson Nurseries, Inc. or Sage Garden Cafe, LLC
-    may be terminated at any time by either party. This waiver does not permit the release or use of disability
-    or medical information in a manner prohibited by the Americans with Disabilities Act (ADA) and other relevant
-    federal and state laws.
+I agree that all statements are true and I understand that any falsification or willful omission
+is sufficient cause for dismissal or refusal of employment. I understand that this application is
+not a contractual agreement and by signing I agree that work at Wilson Nurseries, Inc. or Sage Garden Cafe, LLC
+may be terminated at any time by either party. This waiver does not permit the release or use of disability
+or medical information in a manner prohibited by the Americans with Disabilities Act (ADA) and other relevant
+federal and state laws.
 
-    **Please sign below:**
-    """)
+**Please sign below:**
+""")
 
     canvas_result = st_canvas(
         fill_color="rgba(255, 255, 255, 0)",
@@ -262,7 +227,9 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
 
     st.markdown("---")
 
-    # Employment History
+    # ------------------------------------------------------------------ #
+    # EMPLOYMENT HISTORY
+    # ------------------------------------------------------------------ #
     st.header("Employment History")
     st.info("This section is optional but recommended")
 
@@ -271,65 +238,65 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
 
     employers = []
     for i in range(st.session_state.num_employers):
-        if i == 0:
-            st.subheader("Most Recent Employer")
-        else:
-            st.subheader(f"Employer {i + 1}")
+        st.subheader("Most Recent Employer" if i == 0 else f"Employer {i + 1}")
 
-        employer = st.text_input("Employer Name:", key=f"employer_{i}")
-        location = st.text_input("Location (City/State):", key=f"location_{i}")
+        employer  = st.text_input("Employer Name:",         key=f"employer_{i}")
+        location  = st.text_input("Location (City/State):", key=f"emp_location_{i}")
 
         col1, col2 = st.columns(2)
         with col1:
             hire_date = st.text_input("Hire Date (MM/YYYY):", key=f"hire_date_{i}", placeholder="MM/YYYY")
         with col2:
-            end_date = st.text_input("End Date (MM/YYYY):", key=f"end_date_{i}", placeholder="MM/YYYY")
+            end_date  = st.text_input("End Date (MM/YYYY):",  key=f"end_date_{i}",  placeholder="MM/YYYY")
 
         col1, col2 = st.columns(2)
         with col1:
             position = st.text_input("Position/Title:", key=f"position_{i}")
         with col2:
-            pay_rate = st.text_input("Pay Rate:", key=f"pay_rate_{i}", placeholder="e.g., $15/hr")
+            pay_rate = st.text_input("Pay Rate:",        key=f"pay_rate_{i}", placeholder="e.g., $15/hr")
 
         reason = st.text_input("Reason for Leaving:", key=f"reason_{i}")
 
         employers.append({
-            'employer': employer,
-            'location': location,
+            'employer':  employer,
+            'location':  location,
             'hire_date': hire_date,
-            'end_date': end_date,
-            'position': position,
-            'pay_rate': pay_rate,
-            'reason': reason
+            'end_date':  end_date,
+            'position':  position,
+            'pay_rate':  pay_rate,
+            'reason':    reason
         })
-
         st.markdown("---")
 
     if st.session_state.num_employers < 3:
-        if st.button("Add Another Employer", use_container_width=True):
+        if st.button("Add Another Employer", use_container_width=True, key="add_employer_btn"):
             st.session_state.num_employers += 1
             st.rerun()
 
-    # Educational Background
+    # ------------------------------------------------------------------ #
+    # EDUCATIONAL BACKGROUND
+    # ------------------------------------------------------------------ #
     st.header("Educational Background")
 
     st.subheader("College")
-    college_name = st.text_input("College Name & City:", key="college_name")
-    college_study = st.text_input("Area of Study:", key="college_study")
-    college_graduated = st.radio("Graduated:", ["Yes", "No"], key="college_graduated", horizontal=True)
-    college_completion = st.text_input("Completion Date:", key="college_completion", placeholder="MM/YYYY")
+    college_name       = st.text_input("College Name & City:", key="college_name")
+    college_study      = st.text_input("Area of Study:",       key="college_study")
+    college_graduated  = st.radio("Graduated:", ["Yes", "No"], key="college_graduated", horizontal=True)
+    college_completion = st.text_input("Completion Date:",     key="college_completion", placeholder="MM/YYYY")
 
     st.markdown("---")
 
     st.subheader("High School")
-    hs_name = st.text_input("High School Name & City:", key="hs_name")
-    hs_study = st.text_input("Area of Study:", key="hs_study")
-    hs_graduated = st.radio("Graduated:", ["Yes", "No"], key="hs_graduated", horizontal=True)
-    hs_completion = st.text_input("Completion Date:", key="hs_completion", placeholder="MM/YYYY")
+    hs_name       = st.text_input("High School Name & City:", key="hs_name")
+    hs_study      = st.text_input("Area of Study:",           key="hs_study")
+    hs_graduated  = st.radio("Graduated:", ["Yes", "No"],     key="hs_graduated", horizontal=True)
+    hs_completion = st.text_input("Completion Date:",         key="hs_completion", placeholder="MM/YYYY")
 
     st.markdown("---")
 
-    # Personal References
+    # ------------------------------------------------------------------ #
+    # PERSONAL REFERENCES
+    # ------------------------------------------------------------------ #
     st.header("Personal References")
 
     if 'num_references' not in st.session_state:
@@ -338,152 +305,136 @@ def render_application_form(first_name_prefill='', last_name_prefill='', email_p
     references = []
     for i in range(st.session_state.num_references):
         st.subheader(f"Reference {i + 1}")
-        ref_name = st.text_input("Reference Name:", key=f"ref_name_{i}")
-        ref_contact = st.text_input("Phone Number or Email Address:", key=f"ref_contact_{i}")
-        ref_relationship = st.text_input("Relationship:", key=f"ref_relationship_{i}", placeholder="e.g., Former supervisor, colleague, professor")
+        ref_name         = st.text_input("Reference Name:",                key=f"ref_name_{i}")
+        ref_contact      = st.text_input("Phone Number or Email Address:", key=f"ref_contact_{i}")
+        ref_relationship = st.text_input("Relationship:", key=f"ref_relationship_{i}",
+                                         placeholder="e.g., Former supervisor, colleague, professor")
 
-        references.append({
-            'name': ref_name,
-            'contact': ref_contact,
-            'relationship': ref_relationship
-        })
-
+        references.append({'name': ref_name, 'contact': ref_contact, 'relationship': ref_relationship})
         st.markdown("---")
 
     if st.session_state.num_references < 3:
-        if st.button("Add Another Reference", use_container_width=True):
+        if st.button("Add Another Reference", use_container_width=True, key="add_reference_btn"):
             st.session_state.num_references += 1
             st.rerun()
 
-    # --- SUBMIT BUTTON ---
-    submit_clicked = st.button("Submit Application", type="primary", use_container_width=True)
+    # ================================================================== #
+    # SUBMIT BUTTON
+    # ================================================================== #
+    st.markdown("---")
+    submit_clicked = st.button(
+        "Submit Application",
+        type="primary",
+        use_container_width=True,
+        key="submit_btn"
+    )
 
-    # Validation feedback appears BELOW the submit button
     if submit_clicked:
-        missing_fields = []
 
-        if not first_name.strip():
-            missing_fields.append("First Name")
-        if not last_name.strip():
-            missing_fields.append("Last Name")
-        if not email.strip():
-            missing_fields.append("Email Address")
-        if not phone.strip():
-            missing_fields.append("Phone Number")
-        if not street_address.strip():
-            missing_fields.append("Street Address")
-        if not city.strip():
-            missing_fields.append("City")
-        if not state.strip():
-            missing_fields.append("State")
-        if not zip_code.strip():
-            missing_fields.append("Zip")
-        if not expected_payrate.strip():
-            missing_fields.append("Expected Pay Rate")
-        if not start_date.strip():
-            missing_fields.append("Available to Start date")
-        if not why_applying.strip():
-            missing_fields.append("Why are you applying")
+        # Collect signature (canvas_result is in scope here)
+        has_signature, signature_base64 = _collect_signature(canvas_result)
 
-        # Check signature
-        has_signature = False
-        signature_base64 = None
-        if canvas_result.image_data is not None:
-            try:
-                import numpy as np
-                if np.any(canvas_result.image_data[:, :, 3] > 0):
-                    has_signature = True
-                    sig_img = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
-                    sig_buffer = io.BytesIO()
-                    sig_img.save(sig_buffer, format='PNG')
-                    sig_buffer.seek(0)
-                    signature_base64 = base64.b64encode(sig_buffer.getvalue()).decode('utf-8')
-            except Exception as e:
-                print(f"Signature processing error: {e}")
+        # ---- Hard-block validation (name + email are absolute minimum) ----
+        critical_missing = []
+        if not first_name.strip(): critical_missing.append("First Name")
+        if not last_name.strip():  critical_missing.append("Last Name")
+        if not email.strip():      critical_missing.append("Email Address")
 
-        if not has_signature:
-            missing_fields.append("Signature")
+        if critical_missing:
+            st.error(f"❌ The following fields are required to submit: {', '.join(critical_missing)}")
+            # Collect any other missing fields and show them too
+            soft_missing = []
+            if not phone.strip():            soft_missing.append("Phone Number")
+            if not street_address.strip():   soft_missing.append("Street Address")
+            if not city.strip():             soft_missing.append("City")
+            if not zip_code.strip():         soft_missing.append("Zip")
+            if not expected_payrate.strip(): soft_missing.append("Expected Pay Rate")
+            if not start_date.strip():       soft_missing.append("Available to Start")
+            if not why_applying.strip():     soft_missing.append("Why You Are Applying")
+            if not has_signature:            soft_missing.append("Signature")
+            if soft_missing:
+                st.warning(f"These fields are also incomplete: {', '.join(soft_missing)}")
+            return  # Stay on form — do NOT rerun
 
-        # Show warnings but still allow submission if only minor issues
-        if missing_fields:
-            st.warning(f"⚠️ The following fields are incomplete: {', '.join(missing_fields)}. Please fill them in for a complete application.")
-            # Do NOT return None here — still continue to allow submission
-            # Only block on critical fields: name and email (minimum needed to process)
-            if not first_name.strip() or not last_name.strip() or not email.strip():
-                st.error("First Name, Last Name, and Email are required to process your application.")
-                return None
+        # ---- Soft-warning validation (everything else) ----
+        soft_missing = []
+        if not phone.strip():            soft_missing.append("Phone Number")
+        if not street_address.strip():   soft_missing.append("Street Address")
+        if not city.strip():             soft_missing.append("City")
+        if not zip_code.strip():         soft_missing.append("Zip")
+        if not expected_payrate.strip(): soft_missing.append("Expected Pay Rate")
+        if not start_date.strip():       soft_missing.append("Available to Start")
+        if not why_applying.strip():     soft_missing.append("Why You Are Applying")
+        if not has_signature:            soft_missing.append("Signature")
 
-        if payrate_error:
-            st.warning("Note: Please consider providing a specific pay rate if possible.")
-            # Not blocking — let it through
+        # Note payrate issue as warning but don't block
+        if payrate_warning:
+            soft_missing.append("Expected Pay Rate (please provide a specific number if possible)")
 
-        # Get current timestamp
-        submission_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if soft_missing:
+            st.warning(
+                f"⚠️ The following fields are incomplete or need attention: {', '.join(soft_missing)}. "
+                "Your application will still be submitted."
+            )
 
-        schedule_preference = f"{schedule_type} - {hours_detail}"
-
-        # Compile all data
+        # ---- Build data dict ----
         application_data = {
-            # Personal info
-            'first_name': first_name.strip(),
-            'last_name': last_name.strip(),
-            'email': email.strip(),
-            'phone': phone.strip(),
+            'first_name':      first_name.strip(),
+            'last_name':       last_name.strip(),
+            'email':           email.strip(),
+            'phone':           phone.strip(),
             'alternate_phone': alternate_phone.strip(),
-            'dob': dob.strip(),  # Optional - not required
-            'street_address': street_address.strip(),
-            'city': city.strip(),
-            'state': state.strip(),
-            'zip': zip_code.strip(),
+            'dob':             dob.strip(),
+            'street_address':  street_address.strip(),
+            'city':            city.strip(),
+            'state':           state.strip(),
+            'zip':             zip_code.strip(),
 
-            # No scheduling fields (job fair removed)
-            'location': '',
-            'date': '',
+            # Scheduling fields left blank (job fair removed)
+            'location':  '',
+            'date':      '',
             'time_slot': '',
 
-            # Position info
-            'positions': positions,
-            'hours_15_25': hours_15_25,
-            'hours_30_40': hours_30_40,
-            'hours_40_plus': hours_40_plus,
-            'schedule_preference': schedule_preference,
-            'expected_payrate': expected_payrate.strip(),
+            'positions':           positions,
+            'hours_15_25':         hours_15_25,
+            'hours_30_40':         hours_30_40,
+            'hours_40_plus':       hours_40_plus,
+            'schedule_preference': schedule_type,
+            'expected_payrate':    expected_payrate.strip(),
 
-            # Availability
             'availability_restrictions': availability_restrictions.strip(),
-            'start_date': start_date.strip(),
+            'start_date':               start_date.strip(),
 
-            # About you
-            'why_applying': why_applying.strip(),
+            'why_applying':    why_applying.strip(),
             'special_training': special_training.strip(),
 
-            # Legal
-            'legally_entitled': legally_entitled,
-            'perform_duties': perform_duties,
-            'drug_test': drug_test,
-            'background_check': background_check,
-            'drivers_license': drivers_license,
+            'legally_entitled':   legally_entitled,
+            'perform_duties':     perform_duties,
+            'drug_test':          drug_test,
+            'background_check':   background_check,
+            'drivers_license':    drivers_license,
             'reliable_transport': reliable_transport,
-            'signature_base64': signature_base64,
-            'submission_timestamp': submission_timestamp,
+            'signature_base64':   signature_base64,
+            'submission_timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
 
-            # Employment history
             'employers': employers,
 
-            # Education
-            'college_name': college_name,
-            'college_study': college_study,
-            'college_graduated': college_graduated,
+            'college_name':       college_name,
+            'college_study':      college_study,
+            'college_graduated':  college_graduated,
             'college_completion': college_completion,
-            'hs_name': hs_name,
-            'hs_study': hs_study,
-            'hs_graduated': hs_graduated,
+            'hs_name':       hs_name,
+            'hs_study':      hs_study,
+            'hs_graduated':  hs_graduated,
             'hs_completion': hs_completion,
 
-            # References
-            'references': references
+            'references': references,
         }
 
-        return application_data
-
-    return None
+        # *** THE CLEAN PAGE-FLIP ***
+        # Save to session_state and rerun. On the next render, app.py will
+        # detect 'form_ready_to_process' and show ONLY the processing screen.
+        # The form will not exist at all on that render.
+        st.session_state['pending_application']    = application_data
+        st.session_state['form_ready_to_process']  = True
+        st.rerun()
