@@ -14,9 +14,24 @@
 
 import os
 import streamlit as st
+import streamlit.components.v1 as components
 import traceback
 import uuid
 import time
+
+
+def scroll_to_top():
+    """Inject JS to scroll the browser to the top of the page."""
+    components.html(
+        """
+        <script>
+            // Target the main Streamlit scrollable container and also window
+            window.parent.document.querySelector('section.main').scrollTo({top: 0, behavior: 'instant'});
+            window.parent.scrollTo({top: 0, behavior: 'instant'});
+        </script>
+        """,
+        height=0,
+    )
 
 # ------------------------------------------------------------------ #
 # MAINTENANCE CHECK (must be first)
@@ -115,6 +130,7 @@ def main():
         sub_id = st.session_state.submission_id
         print(f"TERMINAL STATE: ID {sub_id}")
 
+        scroll_to_top()
         st.title("✅ Application Submitted!")
         st.success("Your application has been received.")
 
@@ -201,6 +217,7 @@ position with Wilson Plant Co, Sage Garden Cafe, or our landscaping & production
         applicant_name = f"{full_data.get('first_name', '')} {full_data.get('last_name', '')}"
 
         # ---- Processing UI ----
+        scroll_to_top()
         st.title("Processing Your Application")
         st.write(f"**Applicant:** {applicant_name}")
         st.info(f"**Reference ID:** {sub_id}")
